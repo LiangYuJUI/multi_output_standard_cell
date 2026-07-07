@@ -1,0 +1,6 @@
+[submodule "third_party/GRADUATE"]
+	path = third_party/GRADUATE
+	url = https://github.com/Pathfinder-86/GRADUATE.git
+[submodule "third_party/mockturtle"]
+	path = third_party/mockturtle
+	url = https://github.com/lsils/mockturtle.git
