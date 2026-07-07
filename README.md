@@ -17,13 +17,14 @@ If already cloned without submodules:
 git submodule update --init --recursive
 ```
 
-### ASAP7 cell library (local symlink)
-
-`third_party/asap7sc7p5t_28` is a symlink to a local ASAP7 library checkout (not a git submodule):
+### Local symlinks (not submodules)
 
 ```bash
-ln -s /path/to/asap7sc7p5t_28 third_party/asap7sc7p5t_28
+ln -s /path/to/OpenROAD-flow-scripts/flow/platforms/asap7/lib/NLDM third_party/asap7_lib
+ln -s /path/to/benchmarks third_party/benchmarks
 ```
+
+Extracted RVT FF NLDM libraries live in `third_party/asap7_RVT_FF_nldm/` (gitignored).
 
 ## Third-party dependencies
 
@@ -31,7 +32,9 @@ ln -s /path/to/asap7sc7p5t_28 third_party/asap7sc7p5t_28
 |------|--------|
 | `third_party/GRADUATE` | [Pathfinder-86/GRADUATE](https://github.com/Pathfinder-86/GRADUATE) (submodule) |
 | `third_party/mockturtle` | [lsils/mockturtle](https://github.com/lsils/mockturtle) (submodule) |
-| `third_party/asap7sc7p5t_28` | Local symlink to ASAP7 7.5nm cell library |
+| `third_party/asap7_lib` | Local symlink to ORFS NLDM liberty directory |
+| `third_party/asap7_RVT_FF_nldm` | Extracted `*RVT_FF*nldm*` `.lib` files |
+| `third_party/benchmarks` | Local symlink to EPFL / hdl-benchmarks (`~/tools/benchmarks`) |
 
 ## Documentation
 

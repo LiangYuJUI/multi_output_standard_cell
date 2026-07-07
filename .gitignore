@@ -1,2 +1,6 @@
-# Local symlink to external ASAP7 library (not tracked)
-third_party/asap7sc7p5t_28
+# Local symlinks to external resources (not tracked)
+third_party/benchmarks
+third_party/asap7_lib
+
+# Extracted ASAP7 liberty files (large, derived from asap7_lib)
+third_party/asap7_RVT_FF_nldm/
