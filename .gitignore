@@ -1,3 +1,6 @@
+# Python virtual environment
+.venv/
+
 # Local symlinks to external resources (not tracked)
 third_party/benchmarks
 third_party/asap7_lib
