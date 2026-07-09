@@ -1,0 +1,35 @@
+# EPFL large-scale benchmark set (AND gates >= 30,000).
+# See manifest.yaml for full catalog and scale_thresholds.
+
+version: 1
+scale: large
+manifest: data/epfl/manifest.yaml
+benchmark_root: third_party/benchmarks/EPFL
+
+threshold:
+  min_and_gates: 30000
+
+benchmarks:
+  - id: arithmetic/log2
+    name: log2
+    suite: arithmetic
+    path: third_party/benchmarks/EPFL/arithmetic/log2.aig
+    and_gates: 32060
+
+  - id: arithmetic/div
+    name: div
+    suite: arithmetic
+    path: third_party/benchmarks/EPFL/arithmetic/div.aig
+    and_gates: 57247
+
+  - id: arithmetic/hyp
+    name: hyp
+    suite: arithmetic
+    path: third_party/benchmarks/EPFL/arithmetic/hyp.aig
+    and_gates: 214335
+
+  - id: random_control/mem_ctrl
+    name: mem_ctrl
+    suite: random_control
+    path: third_party/benchmarks/EPFL/random_control/mem_ctrl.aig
+    and_gates: 46836

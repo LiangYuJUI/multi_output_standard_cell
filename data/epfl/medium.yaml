@@ -1,0 +1,48 @@
+# EPFL medium-scale benchmark set (5,000 <= AND gates < 30,000).
+# See manifest.yaml for full catalog and scale_thresholds.
+
+version: 1
+scale: medium
+manifest: data/epfl/manifest.yaml
+benchmark_root: third_party/benchmarks/EPFL
+
+threshold:
+  min_and_gates: 5000
+  max_and_gates: 30000
+
+benchmarks:
+  - id: arithmetic/sin
+    name: sin
+    suite: arithmetic
+    path: third_party/benchmarks/EPFL/arithmetic/sin.aig
+    and_gates: 5416
+
+  - id: arithmetic/square
+    name: square
+    suite: arithmetic
+    path: third_party/benchmarks/EPFL/arithmetic/square.aig
+    and_gates: 18484
+
+  - id: arithmetic/sqrt
+    name: sqrt
+    suite: arithmetic
+    path: third_party/benchmarks/EPFL/arithmetic/sqrt.aig
+    and_gates: 24618
+
+  - id: arithmetic/multiplier
+    name: multiplier
+    suite: arithmetic
+    path: third_party/benchmarks/EPFL/arithmetic/multiplier.aig
+    and_gates: 27062
+
+  - id: random_control/arbiter
+    name: arbiter
+    suite: random_control
+    path: third_party/benchmarks/EPFL/random_control/arbiter.aig
+    and_gates: 11839
+
+  - id: random_control/voter
+    name: voter
+    suite: random_control
+    path: third_party/benchmarks/EPFL/random_control/voter.aig
+    and_gates: 13758

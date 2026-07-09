@@ -1,0 +1,35 @@
+# Pure ABC flow: &deepsyn synthesis -> &nf technology mapping -> Verilog output
+#
+# Closely follows scripts/test_command.sh intent, with corrections:
+#   - use &nf (not &nf -Y) for gate-level mapping
+#   - optional rec_start3 disabled by default (needs GRADUATE_REC_LIB)
+#   - optional &if preprocessing disabled by default
+#
+# Placeholders expanded by run_abc_syn_map.sh:
+#   __INPUT_AIG__      path to input .aig
+#   __LIBERTY__        path to asap7.lib
+#   __OUTPUT_V__       path to output mapped Verilog
+#   __DEEPSYN_ARGS__   e.g. "-I 1 -M 10 -S 0" or "-T 120"
+
+read __INPUT_AIG__
+strash
+ps
+
+read_lib __LIBERTY__
+__REC_START3__
+
+&get
+__PRE_DEEPSYN__
+&deepsyn __DEEPSYN_ARGS__
+strash
+ps
+
+&get
+&nf
+&put
+
+write_verilog __OUTPUT_V__
+read -m __OUTPUT_V__
+topo
+stime
+ps

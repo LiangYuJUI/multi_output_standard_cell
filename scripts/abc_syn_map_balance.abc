@@ -1,0 +1,37 @@
+# ABC balance flow: &if + resyn2 + &deepsyn -> &nf -Y match dump -> Verilog
+#
+# This is the cleaned "balance" mode from the legacy cover/match generator:
+#   &if -y -K 6; &put; resyn2; resyn2; &get
+#   &deepsyn -T 120
+#   &nf -Y <match.txt>
+#
+# Placeholders expanded by run_abc_syn_map.sh:
+#   __INPUT_AIG__      path to input .aig
+#   __LIBERTY__        path to asap7.lib
+#   __MATCH_FILE__     path to &nf -Y match dump
+#   __OUTPUT_V__       path to output mapped Verilog
+#   __REC_START3__     optional rec_start3 line (empty if disabled)
+#   __DEEPSYN_ARGS__   default: -T 120
+
+read __INPUT_AIG__
+strash
+ps
+
+read_lib __LIBERTY__
+__REC_START3__
+
+&get
+&if -y -K 6; &put; balance; rewrite; refactor; balance; rewrite; rewrite -z; balance; refactor -z; rewrite -z; balance; &get
+&deepsyn __DEEPSYN_ARGS__
+strash
+ps
+
+&get
+&nf -Y __MATCH_FILE__
+&put
+
+topo
+stime
+write_verilog __OUTPUT_V__
+read -m __OUTPUT_V__
+ps

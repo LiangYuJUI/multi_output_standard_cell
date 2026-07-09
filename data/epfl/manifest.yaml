@@ -1,0 +1,174 @@
+# EPFL combinational benchmark catalog (path references only; no file copies).
+#
+# Paths are relative to the repository root.
+# Gate counts are from: graduate-abc -c "read <aig>; strash; ps" (2026-07-09).
+
+version: 1
+benchmark_root: third_party/benchmarks/EPFL
+
+suites:
+  arithmetic:
+    root: third_party/benchmarks/EPFL/arithmetic
+    formats: [aig, blif, v, vhd]
+  random_control:
+    root: third_party/benchmarks/EPFL/random_control
+    formats: [aig, blif, v, vhd]
+
+scale_thresholds:
+  tiny:
+    max_and_gates: 1000
+    description: Fastest smoke tests and script debugging
+  small:
+    min_and_gates: 1000
+    max_and_gates: 5000
+    description: Smoke tests, CI, quick iteration
+  medium:
+    min_and_gates: 5000
+    max_and_gates: 30000
+    description: Regular synthesis / mapping experiments
+  large:
+    min_and_gates: 30000
+    description: Stress tests and QoR evaluation
+
+benchmarks:
+  # --- arithmetic ---
+  - id: arithmetic/adder
+    name: adder
+    suite: arithmetic
+    path: third_party/benchmarks/EPFL/arithmetic/adder.aig
+    scale: small
+    stats: {inputs: 256, outputs: 129, and_gates: 1020, level: 255}
+
+  - id: arithmetic/max
+    name: max
+    suite: arithmetic
+    path: third_party/benchmarks/EPFL/arithmetic/max.aig
+    scale: small
+    stats: {inputs: 512, outputs: 130, and_gates: 2865, level: 287}
+
+  - id: arithmetic/bar
+    name: bar
+    suite: arithmetic
+    path: third_party/benchmarks/EPFL/arithmetic/bar.aig
+    scale: small
+    stats: {inputs: 135, outputs: 128, and_gates: 3336, level: 12}
+
+  - id: arithmetic/sin
+    name: sin
+    suite: arithmetic
+    path: third_party/benchmarks/EPFL/arithmetic/sin.aig
+    scale: medium
+    stats: {inputs: 24, outputs: 25, and_gates: 5416, level: 225}
+
+  - id: arithmetic/multiplier
+    name: multiplier
+    suite: arithmetic
+    path: third_party/benchmarks/EPFL/arithmetic/multiplier.aig
+    scale: medium
+    stats: {inputs: 128, outputs: 128, and_gates: 27062, level: 274}
+
+  - id: arithmetic/sqrt
+    name: sqrt
+    suite: arithmetic
+    path: third_party/benchmarks/EPFL/arithmetic/sqrt.aig
+    scale: medium
+    stats: {inputs: 128, outputs: 64, and_gates: 24618, level: 5058}
+
+  - id: arithmetic/log2
+    name: log2
+    suite: arithmetic
+    path: third_party/benchmarks/EPFL/arithmetic/log2.aig
+    scale: large
+    stats: {inputs: 32, outputs: 32, and_gates: 32060, level: 444}
+
+  - id: arithmetic/div
+    name: div
+    suite: arithmetic
+    path: third_party/benchmarks/EPFL/arithmetic/div.aig
+    scale: large
+    stats: {inputs: 128, outputs: 128, and_gates: 57247, level: 4372}
+
+  - id: arithmetic/hyp
+    name: hyp
+    suite: arithmetic
+    path: third_party/benchmarks/EPFL/arithmetic/hyp.aig
+    scale: large
+    stats: {inputs: 256, outputs: 128, and_gates: 214335, level: 24801}
+
+  - id: arithmetic/square
+    name: square
+    suite: arithmetic
+    path: third_party/benchmarks/EPFL/arithmetic/square.aig
+    scale: medium
+    stats: {inputs: 64, outputs: 128, and_gates: 18484, level: 250}
+
+  # --- random_control ---
+  - id: random_control/ctrl
+    name: ctrl
+    suite: random_control
+    path: third_party/benchmarks/EPFL/random_control/ctrl.aig
+    scale: tiny
+    stats: {inputs: 7, outputs: 26, and_gates: 174, level: 10}
+
+  - id: random_control/int2float
+    name: int2float
+    suite: random_control
+    path: third_party/benchmarks/EPFL/random_control/int2float.aig
+    scale: tiny
+    stats: {inputs: 11, outputs: 7, and_gates: 260, level: 16}
+
+  - id: random_control/dec
+    name: dec
+    suite: random_control
+    path: third_party/benchmarks/EPFL/random_control/dec.aig
+    scale: tiny
+    stats: {inputs: 8, outputs: 256, and_gates: 304, level: 3}
+
+  - id: random_control/router
+    name: router
+    suite: random_control
+    path: third_party/benchmarks/EPFL/random_control/router.aig
+    scale: tiny
+    stats: {inputs: 60, outputs: 30, and_gates: 257, level: 54}
+
+  - id: random_control/cavlc
+    name: cavlc
+    suite: random_control
+    path: third_party/benchmarks/EPFL/random_control/cavlc.aig
+    scale: tiny
+    stats: {inputs: 10, outputs: 11, and_gates: 693, level: 16}
+
+  - id: random_control/i2c
+    name: i2c
+    suite: random_control
+    path: third_party/benchmarks/EPFL/random_control/i2c.aig
+    scale: small
+    stats: {inputs: 147, outputs: 142, and_gates: 1342, level: 20}
+
+  - id: random_control/priority
+    name: priority
+    suite: random_control
+    path: third_party/benchmarks/EPFL/random_control/priority.aig
+    scale: tiny
+    stats: {inputs: 128, outputs: 8, and_gates: 978, level: 250}
+
+  - id: random_control/arbiter
+    name: arbiter
+    suite: random_control
+    path: third_party/benchmarks/EPFL/random_control/arbiter.aig
+    scale: medium
+    stats: {inputs: 256, outputs: 129, and_gates: 11839, level: 87}
+
+  - id: random_control/voter
+    name: voter
+    suite: random_control
+    path: third_party/benchmarks/EPFL/random_control/voter.aig
+    scale: medium
+    stats: {inputs: 1001, outputs: 1, and_gates: 13758, level: 70}
+
+  - id: random_control/mem_ctrl
+    name: mem_ctrl
+    suite: random_control
+    path: third_party/benchmarks/EPFL/random_control/mem_ctrl.aig
+    scale: large
+    stats: {inputs: 1204, outputs: 1231, and_gates: 46836, level: 114}

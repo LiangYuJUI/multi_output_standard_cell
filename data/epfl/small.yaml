@@ -1,0 +1,36 @@
+# EPFL small-scale benchmark set (1,000 <= AND gates < 5,000).
+# See manifest.yaml for full catalog and scale_thresholds.
+
+version: 1
+scale: small
+manifest: data/epfl/manifest.yaml
+benchmark_root: third_party/benchmarks/EPFL
+
+threshold:
+  min_and_gates: 1000
+  max_and_gates: 5000
+
+benchmarks:
+  - id: arithmetic/adder
+    name: adder
+    suite: arithmetic
+    path: third_party/benchmarks/EPFL/arithmetic/adder.aig
+    and_gates: 1020
+
+  - id: arithmetic/max
+    name: max
+    suite: arithmetic
+    path: third_party/benchmarks/EPFL/arithmetic/max.aig
+    and_gates: 2865
+
+  - id: arithmetic/bar
+    name: bar
+    suite: arithmetic
+    path: third_party/benchmarks/EPFL/arithmetic/bar.aig
+    and_gates: 3336
+
+  - id: random_control/i2c
+    name: i2c
+    suite: random_control
+    path: third_party/benchmarks/EPFL/random_control/i2c.aig
+    and_gates: 1342

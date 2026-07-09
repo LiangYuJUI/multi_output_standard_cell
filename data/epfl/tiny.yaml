@@ -1,0 +1,47 @@
+# EPFL tiny-scale benchmark set (AND gates < 1,000).
+# Fastest smoke tests; see manifest.yaml for full catalog.
+
+version: 1
+scale: tiny
+manifest: data/epfl/manifest.yaml
+benchmark_root: third_party/benchmarks/EPFL
+
+threshold:
+  max_and_gates: 1000
+
+benchmarks:
+  - id: random_control/ctrl
+    name: ctrl
+    suite: random_control
+    path: third_party/benchmarks/EPFL/random_control/ctrl.aig
+    and_gates: 174
+
+  - id: random_control/int2float
+    name: int2float
+    suite: random_control
+    path: third_party/benchmarks/EPFL/random_control/int2float.aig
+    and_gates: 260
+
+  - id: random_control/router
+    name: router
+    suite: random_control
+    path: third_party/benchmarks/EPFL/random_control/router.aig
+    and_gates: 257
+
+  - id: random_control/dec
+    name: dec
+    suite: random_control
+    path: third_party/benchmarks/EPFL/random_control/dec.aig
+    and_gates: 304
+
+  - id: random_control/cavlc
+    name: cavlc
+    suite: random_control
+    path: third_party/benchmarks/EPFL/random_control/cavlc.aig
+    and_gates: 693
+
+  - id: random_control/priority
+    name: priority
+    suite: random_control
+    path: third_party/benchmarks/EPFL/random_control/priority.aig
+    and_gates: 978

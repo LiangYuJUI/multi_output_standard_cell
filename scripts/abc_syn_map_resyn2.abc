@@ -1,0 +1,37 @@
+# Pure ABC flow: resyn2 synthesis -> &nf technology mapping -> Verilog output
+#
+# Usage (run from GRADUATE root via run_abc_syn_map.sh):
+#   graduate-abc -f <path-to-this-script>
+#
+# Placeholders expanded by the shell wrapper:
+#   __INPUT_AIG__   path to input .aig
+#   __LIBERTY__     path to asap7.lib
+#   __OUTPUT_V__    path to output mapped Verilog
+
+read __INPUT_AIG__
+strash
+ps
+
+# IWLS resyn2 script (same as abc.rc alias: b; rw; rf; b; rw; rwz; b; rfz; rwz; b)
+balance
+rewrite
+refactor
+balance
+rewrite
+rewrite -z
+balance
+refactor -z
+rewrite -z
+balance
+ps
+
+read_lib __LIBERTY__
+&get
+&nf
+&put
+
+write_verilog __OUTPUT_V__
+read -m __OUTPUT_V__
+topo
+stime
+ps
