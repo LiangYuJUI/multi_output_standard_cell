@@ -1,3 +1,4 @@
+# See docs/SCRIPTS.md
 # Reference ABC script from earlier experiments (GradMap-oriented).
 #
 # Verification summary (2026-07-09):

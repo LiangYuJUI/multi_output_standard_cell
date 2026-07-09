@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# See docs/SCRIPTS.md
 # List EPFL benchmark names or resolve paths from data/epfl/*.yaml
 #
 # Usage:

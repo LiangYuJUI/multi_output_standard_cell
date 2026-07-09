@@ -39,3 +39,5 @@ Extracted RVT FF NLDM libraries live in `third_party/asap7_RVT_FF_nldm/` (gitign
 ## Documentation
 
 See [`docs/`](docs/) for detailed notes on ASAP7 multi-output cells, GRADUATE, and mockturtle.
+
+- **[`docs/SCRIPTS.md`](docs/SCRIPTS.md)** — `scripts/` 目錄各腳本用法與管線說明（新增/修改 script 時請同步更新）

@@ -1,3 +1,4 @@
+# See docs/SCRIPTS.md
 # Pure ABC flow: resyn2 synthesis -> &nf technology mapping -> Verilog output
 #
 # Usage (run from GRADUATE root via run_abc_syn_map.sh):

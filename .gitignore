@@ -4,6 +4,9 @@
 # Generated run artifacts (ABC flows, match dumps, reports)
 output/
 
+# Local CMake build tree (mo_techmap and embedded mockturtle libs)
+build/
+
 # Local symlinks to external resources (not tracked)
 third_party/benchmarks
 third_party/asap7_lib

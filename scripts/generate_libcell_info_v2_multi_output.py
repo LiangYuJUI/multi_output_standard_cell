@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# See docs/SCRIPTS.md
 """Generate libcell_info_v2_multi_output from Liberty.
 
 Extends GRADUATE's ``generate_libcell_info_v2.py`` to keep cells with multiple

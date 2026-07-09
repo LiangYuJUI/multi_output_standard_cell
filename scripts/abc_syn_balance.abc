@@ -1,0 +1,28 @@
+# See docs/SCRIPTS.md
+# ABC balance synthesis only (no &nf mapping, no match dump).
+#
+# Equivalent to the synthesis portion of abc_syn_map_balance.abc:
+#   &if -y -K 6; resyn2; &deepsyn; strash; write_aiger
+#
+# Placeholders expanded by run_abc_mockturtle_map.sh:
+#   __INPUT_AIG__      path to input .aig
+#   __OUTPUT_AIG__     path to synthesized output .aig
+#   __LIBERTY__        path to asap7.lib (needed before &get/&deepsyn in gia space)
+#   __REC_START3__     optional rec_start3 line
+#   __DEEPSYN_ARGS__   default: -T 120
+
+read __INPUT_AIG__
+strash
+ps
+
+read_lib __LIBERTY__
+__REC_START3__
+
+&get
+&if -y -K 6; &put; balance; rewrite; refactor; balance; rewrite; rewrite -z; balance; refactor -z; rewrite -z; balance; &get
+&deepsyn __DEEPSYN_ARGS__
+strash
+ps
+
+write_aiger __OUTPUT_AIG__
+ps

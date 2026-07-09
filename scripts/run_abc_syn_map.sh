@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# See docs/SCRIPTS.md
 # Run ABC synthesis -> technology mapping on EPFL (or other) .aig benchmarks.
 #
 # Flows:

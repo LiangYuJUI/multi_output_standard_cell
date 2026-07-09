@@ -1,3 +1,4 @@
+# See docs/SCRIPTS.md
 # ABC balance flow: &if + resyn2 + &deepsyn -> &nf -Y match dump -> Verilog
 #
 # This is the cleaned "balance" mode from the legacy cover/match generator:

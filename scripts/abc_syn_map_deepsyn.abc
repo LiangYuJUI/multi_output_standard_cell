@@ -1,3 +1,4 @@
+# See docs/SCRIPTS.md
 # Pure ABC flow: &deepsyn synthesis -> &nf technology mapping -> Verilog output
 #
 # Closely follows scripts/test_command.sh intent, with corrections:
