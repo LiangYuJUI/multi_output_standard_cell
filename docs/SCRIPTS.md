@@ -12,11 +12,15 @@
 |------|------|----------|-----------|
 | [`run_abc_syn_map.sh`](../scripts/run_abc_syn_map.sh) | Bash | ABC 合成 + `&nf` / `&nf -Y` mapping，批次跑 EPFL | 使用者 / CI |
 | [`run_abc_mockturtle_map.sh`](../scripts/run_abc_mockturtle_map.sh) | Bash | ABC balance 合成（僅 AIG）+ mockturtle `mo_techmap` | 使用者 |
-| [`list_epfl_benchmarks.sh`](../scripts/list_epfl_benchmarks.sh) | Bash | 從 `data/epfl/*.yaml` 列出或解析 benchmark | 上述兩個 runner |
+| [`run_abc_emap_map.sh`](../scripts/run_abc_emap_map.sh) | Bash | ABC balance 合成 + ABC-native `emap -Y` match dump + Verilog | 使用者 |
+| [`compare_graduate_abc_emap.sh`](../scripts/compare_graduate_abc_emap.sh) | Bash | 比對 standalone `third_party/abc` 與 `graduate-abc` 的 ABC-native `emap` 結果 | 開發者 / CI |
+| [`compare_nf_emap_map.sh`](../scripts/compare_nf_emap_map.sh) | Bash | 比對 `&nf -Y` vs `emap -Y` mapping QoR，輸出 markdown | 使用者 |
+| [`list_epfl_benchmarks.sh`](../scripts/list_epfl_benchmarks.sh) | Bash | 從 `data/epfl/*.yaml` 列出或解析 benchmark | 上述 runners |
 | [`abc_syn_map_resyn2.abc`](../scripts/abc_syn_map_resyn2.abc) | ABC | resyn2 合成 + `&nf` → Verilog | `run_abc_syn_map.sh --flow resyn2` |
 | [`abc_syn_map_deepsyn.abc`](../scripts/abc_syn_map_deepsyn.abc) | ABC | `&deepsyn` 合成 + `&nf` → Verilog | `run_abc_syn_map.sh --flow deepsyn` |
 | [`abc_syn_map_balance.abc`](../scripts/abc_syn_map_balance.abc) | ABC | balance 合成 + `&nf -Y` match + Verilog | `run_abc_syn_map.sh --flow balance` |
-| [`abc_syn_balance.abc`](../scripts/abc_syn_balance.abc) | ABC | balance 合成 only → `synth.aig`（無 mapping） | `run_abc_mockturtle_map.sh` |
+| [`abc_syn_balance.abc`](../scripts/abc_syn_balance.abc) | ABC | balance 合成 only → `synth.aig`（無 mapping） | `run_abc_mockturtle_map.sh` / `run_abc_emap_map.sh` |
+| [`abc_emap_map.abc`](../scripts/abc_emap_map.abc) | ABC | `read_aiger` → `strash` → `read_genlib` → `emap -Y` → Verilog | `run_abc_emap_map.sh` |
 | [`generate_libcell_info_v2_multi_output.py`](../scripts/generate_libcell_info_v2_multi_output.py) | Python | Liberty → `libcell_info_v2_multi_output`（含 FA/HA） | 使用者（離線產 libcell） |
 | [`test_command.sh`](../scripts/test_command.sh) | 參考 | 早期 ABC 實驗腳本與驗證備註（非 runner） | 開發者參考 |
 
@@ -303,6 +307,137 @@ resyn2（展開版 `balance; rewrite; refactor; ...`）→ `read_lib` → `&nf` 
 
 ---
 
+## `compare_graduate_abc_emap.sh`
+
+**功能**：在相同 AIG 與 GENLIB 上，分別對 standalone [`third_party/abc`](../third_party/abc) 與 [`graduate-abc`](../third_party/GRADUATE/build_abc_frontend/graduate-abc) 執行 ABC-native `emap`，比對：
+
+- `emap -amv` 的 verbose 摘要行（`ABC-native emap mapped ...`）
+- `print_stats` 輸出
+- 正規化後的 BLIF（略過 `# Benchmark` 時間戳行）
+
+用於驗證 GRADUATE bundled ABC 已正確整合 `src/map/emap/`。預設 flags 為 `-av`（area + verbose，**保留** MOG；勿用 `-m`，會關掉 multi-output）。
+
+**範例**：
+
+```bash
+./scripts/compare_graduate_abc_emap.sh
+./scripts/compare_graduate_abc_emap.sh --cases "adder c1355 multiplier"
+./scripts/compare_graduate_abc_emap.sh --scale tiny --bench-root third_party/mockturtle/experiments/benchmarks
+```
+
+**環境變數**：`STANDALONE_ABC`、`GRADUATE_ABC`、`EMAP_GENLIB`、`EMAP_FLAGS`（預設 `-av`）。
+
+**輸出**：`output/emap_equiv_<timestamp>/` 內含各 case 的 BLIF、log 與 `.norm.blif`。
+
+---
+
+## `compare_nf_emap_map.sh`
+
+**功能**：比對 `run_abc_syn_map.sh --flow balance`（`&nf -Y`）與 `run_abc_emap_map.sh`（`emap -Y`），並用**同一份 ASAP7 Liberty `stime`** 重跑 STA，輸出可直接比較的 markdown。
+
+**STA 流程**（兩邊相同）：
+
+```text
+read_lib asap7.lib
+read -m <mapped.v>     # emap 先做 Liberty 相容前處理
+topo
+stime                  # Gates / Area / Delay（同一單位）
+```
+
+emap 前處理：合併 twin FA/HA、補齊未用 CON/SN；`MAJIx2`→`MAJIxp5`；`XNOR3x1`→`XNOR2x1` cascade（僅為 STA 可跑）。
+
+**範例**：
+
+```bash
+./scripts/compare_nf_emap_map.sh \
+  --nf-dir output/abc_syn_map_20260709_201016 \
+  --emap-dir output/abc_emap_map_20260710_162632 \
+  --jobs 8
+
+./scripts/compare_nf_emap_map.sh \
+  --nf-dir output/abc_syn_map_20260709_201016 \
+  --emap-dir output/abc_emap_map_20260710_162632 \
+  --force-stime --out output/compare_nf_emap.md
+```
+
+**報告欄位**：post-synth AND、Liberty gates/area/delay、Δ%、emap MBIND。
+
+**快取**：每 case 寫入 `<case>/stime_asap7.txt`（emap 另存 `*_emap_merged.v`）。
+
+**預設輸出**：`<emap-dir>/compare_nf_emap.md`
+
+---
+
+## `run_abc_emap_map.sh` / `abc_emap_map.abc`
+
+**功能**：與 [`abc_syn_map_balance.abc`](../scripts/abc_syn_map_balance.abc) **共用同一段** balance 合成（`&if -y -K 6` + resyn2 + `&deepsyn -T 120`），只在 mapping 換成 `emap -Y`。用於公平比較 `&nf -Y` vs `emap -Y`。
+
+```text
+abc_syn_map_balance.abc          abc_emap_map.abc
+─────────────────────            ────────────────
+read; strash; read_lib           (identical)
+&if + resyn2; &deepsyn           (identical)
+strash; write_aiger synth.aig    (identical)
+&get; &nf -Y; &put               read_genlib; emap -Y
+write_verilog                    write_verilog
+```
+
+**範例**：
+
+```bash
+# 與 output/abc_syn_map_20260709_201016 相同的 EPFL 全集
+./scripts/run_abc_emap_map.sh --scale all --parallel --dump-level 1
+
+./scripts/run_abc_emap_map.sh --cases "adder ctrl" --dump-level 1 --cec
+./scripts/run_abc_emap_map.sh --dump-level 3   # 預設也是 --scale all
+```
+
+**選項**：
+
+| 選項 | 說明 |
+|------|------|
+| `--scale` / `--cases` | 預設 `--scale all`（arithmetic + random_control） |
+| `--dump-level 1\|2\|3` | `emap -M`：1=warm start；2=+MOG tuples；3=+full SO cuts |
+| `--emap-flags STR` | 預設 `-a -v`（area + verbose；MOG 預設開啟） |
+| `--genlib PATH` | multioutput GENLIB |
+| `--cec` | 對 mapped Verilog 與 `synth.aig` 做 CEC |
+
+**輸出**（每 case）：
+
+| 檔案 | 內容 |
+|------|------|
+| `synth.aig` | 與 `&nf -Y` 流程相同的 post-synth AIG |
+| `matches.nf_y_multi.txt` | `emap -Y` match dump（含 `BIND` / `MBIND` / `M`） |
+| `*_emap.v` | mapped Verilog |
+| `run.abc` / `run.log` | 實際 ABC script 與 log |
+
+**`emap -Y` 格式摘要**（`nf_y_multi_v1`）：
+
+```text
+# format: nf_y_multi_v1
+<root_lit> <cell> <area> <n_fanins> <fanins...> 0 [BIND:<id>]
+BIND <id> <cell> <area> <n_fanins> <fanins...> <root0> <root1>
+  ROOTS ...
+  ROLES CON SN
+  FANINS ...
+  COVER 0
+M<root_lit> <cell> <area> <fanins...>
+MBIND <id> <cell> <area> <fanins...>
+```
+
+---
+
+## 規劃中（尚未實作）
+
+以下見 [`ABC_MOCKTURTLE_MULTI_OUTPUT.md`](ABC_MOCKTURTLE_MULTI_OUTPUT.md) Phase 3：
+
+| 項目 | 用途 |
+|------|------|
+| GradMap `nf_y_multi` parser | 讀 `BIND` / `MBIND`，binding-level softmax |
+| `libcell_info_v2_multi_output` loader | MapLibrary 支援 FA/HA |
+
+---
+
 ## 新增腳本時的檢查清單
 
 新增或修改 `scripts/` 檔案時，請確認：
@@ -321,7 +456,8 @@ resyn2（展開版 `balance; rewrite; refactor; ...`）→ `read_lib` → `&nf` 
 | 文件 | 內容 |
 |------|------|
 | [`GRADUATE.md`](GRADUATE.md) | GRADUATE / GradMap / `graduate-abc` 建置 |
+| [`GRADMAP.md`](GRADMAP.md) | GradMap 詳細說明（match file、訓練、multi-output） |
 | [`MOCKTURTLE.md`](MOCKTURTLE.md) | mockturtle 子模組與 emap |
-| [`ABC_MOCKTURTLE_MULTI_OUTPUT.md`](ABC_MOCKTURTLE_MULTI_OUTPUT.md) | ABC + mockturtle 整合與 Phase 規劃 |
+| [`ABC_MOCKTURTLE_MULTI_OUTPUT.md`](ABC_MOCKTURTLE_MULTI_OUTPUT.md) | ABC emap match dump + GradMap 整合規劃 |
 | [`ASAP7_MULTI_OUTPUT_CELLS.md`](ASAP7_MULTI_OUTPUT_CELLS.md) | ASAP7 multi-output cell 盤點 |
 | [`GENERATE_LIBCELL_INFO_V2_MULTI_OUTPUT.md`](GENERATE_LIBCELL_INFO_V2_MULTI_OUTPUT.md) | libcell_info 格式細節 |

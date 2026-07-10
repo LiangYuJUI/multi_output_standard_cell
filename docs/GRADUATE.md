@@ -4,6 +4,8 @@
 
 > **專案位置**：`third_party/GRADUATE` 為指向 `~/tools/GRADUATE` 的符號連結。以下所有路徑均以 GRADUATE 根目錄為基準；在 `multi_output_standard_cell` 中請使用 `third_party/GRADUATE`。
 
+> **GradMap 深入說明**：match file 語意、訓練模型、per-root softmax 與 multi-output 限制見 [`docs/GRADMAP.md`](../GRADMAP.md)。
+
 ---
 
 ## 目錄
@@ -315,6 +317,8 @@ abc> gradsyn -backend native_providers -providers rewrite,balance -details
 
 對目前 ABC 網路執行 GradMap：呼叫 ABC `&nf -Y` 取得標準元件匹配、訓練選擇模型、重建 Verilog 並讀回 ABC。
 
+> 完整說明（match file 格式、訓練模型、warm start、multi-output 限制）見 [`GRADMAP.md`](GRADMAP.md)。
+
 **常用選項**：
 
 | 選項 | 預設值 | 說明 |
@@ -591,7 +595,10 @@ GRADUATE 原始碼目錄內有更詳細的設計文件：
 | `third_party/GRADUATE/docs/setup.md` | 伺服器安裝、建置、自訂函式庫 |
 | `third_party/GRADUATE/docs/architecture.md` | 架構設計與模組劃分 |
 | `third_party/GRADUATE/docs/sequential_benchmarks.md` | 時序 benchmark 流程細節 |
-| `third_party/GRADUATE/docs/gradmap_refactor.md` | GradMap 重構與 `&nf -Y` 語意 |
+| 文件 | 說明 |
+|------|------|
+| [`docs/GRADMAP.md`](../GRADMAP.md) | **GradMap 完整說明**（match file、訓練、限制） |
+| `third_party/GRADUATE/docs/gradmap_refactor.md` | GradMap 重構與 `&nf -Y` 語意（上游） |
 
 ---
 

@@ -6,11 +6,15 @@
 #   &deepsyn -T 120
 #   &nf -Y <match.txt>
 #
+# Synthesis / tech-independent portion is shared with abc_emap_map.abc;
+# only the mapping step differs (&nf -Y vs emap -Y).
+#
 # Placeholders expanded by run_abc_syn_map.sh:
 #   __INPUT_AIG__      path to input .aig
 #   __LIBERTY__        path to asap7.lib
 #   __MATCH_FILE__     path to &nf -Y match dump
 #   __OUTPUT_V__       path to output mapped Verilog
+#   __OUTPUT_AIG__     path to post-synth AIG (shared snapshot vs emap flow)
 #   __REC_START3__     optional rec_start3 line (empty if disabled)
 #   __DEEPSYN_ARGS__   default: -T 120
 
@@ -25,6 +29,10 @@ __REC_START3__
 &if -y -K 6; &put; balance; rewrite; refactor; balance; rewrite; rewrite -z; balance; refactor -z; rewrite -z; balance; &get
 &deepsyn __DEEPSYN_ARGS__
 strash
+ps
+
+# Snapshot the shared post-synth AIG (same point as before emap in abc_emap_map.abc).
+write_aiger __OUTPUT_AIG__
 ps
 
 &get

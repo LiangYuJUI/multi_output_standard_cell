@@ -147,10 +147,12 @@ render_abc_script() {
   local output_v="$2"
   local match_file="$3"
   local rendered="$4"
+  local output_aig="${5:-}"
   sed \
     -e "s|__INPUT_AIG__|$input_aig|g" \
     -e "s|__LIBERTY__|$LIBERTY|g" \
     -e "s|__OUTPUT_V__|$output_v|g" \
+    -e "s|__OUTPUT_AIG__|${output_aig}|g" \
     -e "s|__MATCH_FILE__|$match_file|g" \
     -e "s|__DEEPSYN_ARGS__|$DEEPSYN_ARGS|g" \
     -e "s|__REC_START3__|${REC_START3_LINE}|g" \
@@ -219,14 +221,16 @@ run_one_case() {
   local log="$case_out/run.log"
   local verilog="$case_out/${case_name}_${FLOW}.v"
   local match_file="$case_out/${case_name}.txt"
+  local synth_aig="$case_out/synth.aig"
 
   abc_script="$(cd "$(dirname "$abc_script")" && pwd)/$(basename "$abc_script")"
   log="$(cd "$(dirname "$log")" && pwd)/$(basename "$log")"
   verilog="$(cd "$(dirname "$verilog")" && pwd)/$(basename "$verilog")"
   match_file="$(cd "$(dirname "$match_file")" && pwd)/$(basename "$match_file")"
+  synth_aig="$(cd "$(dirname "$synth_aig")" && pwd)/$(basename "$synth_aig")"
 
   echo "== $case_name =="
-  render_abc_script "$input" "$verilog" "$match_file" "$abc_script"
+  render_abc_script "$input" "$verilog" "$match_file" "$abc_script" "$synth_aig"
 
   set +e
   timeout "$TIMEOUT" bash -c "cd \"$GRADUATE_DIR\" && \"$ABC\" -f \"$abc_script\"" > "$log" 2>&1

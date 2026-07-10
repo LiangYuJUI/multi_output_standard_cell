@@ -1,0 +1,49 @@
+# See docs/SCRIPTS.md
+# ABC balance synthesis (identical to abc_syn_map_balance.abc) + ABC-native emap -Y.
+#
+# Shared with abc_syn_map_balance.abc (tech-independent):
+#   read; strash; read_lib
+#   &if -y -K 6; &put; balance; rewrite; refactor; ...; &get
+#   &deepsyn -T 120
+#   strash
+#
+# Differs only in mapping:
+#   balance flow:  &get; &nf -Y <match>; &put; write_verilog
+#   this script:   read_genlib; emap -Y <match> -M <level>; write_verilog
+#
+# Placeholders expanded by run_abc_emap_map.sh:
+#   __INPUT_AIG__      path to input .aig
+#   __LIBERTY__        path to asap7.lib (needed for &deepsyn)
+#   __GENLIB__         path to multioutput.genlib (emap)
+#   __MATCH_FILE__     path to nf_y_multi match dump
+#   __OUTPUT_V__       path to mapped Verilog
+#   __OUTPUT_AIG__     path to post-synth AIG (for fair compare vs &nf -Y run)
+#   __REC_START3__     optional rec_start3 line (empty if disabled)
+#   __DEEPSYN_ARGS__   default: -T 120
+#   __EMAP_FLAGS__     e.g. -a -v
+#   __DUMP_LEVEL__     1 / 2 / 3
+
+read __INPUT_AIG__
+strash
+ps
+
+read_lib __LIBERTY__
+__REC_START3__
+
+&get
+&if -y -K 6; &put; balance; rewrite; refactor; balance; rewrite; rewrite -z; balance; refactor -z; rewrite -z; balance; &get
+&deepsyn __DEEPSYN_ARGS__
+strash
+ps
+
+# Snapshot the shared post-synth AIG (same point as before &nf / emap).
+write_aiger __OUTPUT_AIG__
+ps
+
+read_genlib __GENLIB__
+emap __EMAP_FLAGS__ -Y __MATCH_FILE__ -M __DUMP_LEVEL__
+ps
+
+write_verilog __OUTPUT_V__
+read -m __OUTPUT_V__
+ps

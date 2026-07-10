@@ -1,27 +1,28 @@
-# ABC × mockturtle Multi-Output Mapping 整合規劃
+# ABC Multi-Output Mapping 整合規劃
 
-本文件說明在 **目前專案狀態** 下，如何將 `third_party/GRADUATE` 的 `graduate-abc` 與 `third_party/mockturtle` 的 `emap` 整合，以產生 **multi-output standard cell**（FA/HA）映射結果；並規劃如何產生與 ABC `&nf -Y` **相容、可擴充** 的 match file（`.txt`），作為 GradMap 輸入。
+本文件說明在 **目前專案狀態** 下，如何以 **ABC-native `emap`**（`third_party/abc/src/map/emap/`）產生含 **multi-output binding** 的 match file，作為 GradMap 輸入；並保留 mockturtle `mo_techmap` 作為 Phase 0 驗證管線。
 
-> **相關文件**：[GRADUATE.md](GRADUATE.md)、[MOCKTURTLE.md](MOCKTURTLE.md)、[ASAP7_MULTI_OUTPUT_CELLS.md](ASAP7_MULTI_OUTPUT_CELLS.md)、[GENERATE_LIBCELL_INFO_V2_MULTI_OUTPUT.md](GENERATE_LIBCELL_INFO_V2_MULTI_OUTPUT.md)
+> **相關文件**：[GRADUATE.md](GRADUATE.md)、[GRADMAP.md](GRADMAP.md)、[MOCKTURTLE.md](MOCKTURTLE.md)、[SCRIPTS.md](SCRIPTS.md)、[ASAP7_MULTI_OUTPUT_CELLS.md](ASAP7_MULTI_OUTPUT_CELLS.md)、[GENERATE_LIBCELL_INFO_V2_MULTI_OUTPUT.md](GENERATE_LIBCELL_INFO_V2_MULTI_OUTPUT.md)
 
 ---
 
 ## 目錄
 
 1. [現狀摘要](#現狀摘要)
-2. [目標與非目標](#目標與非目標)
-3. [整體架構](#整體架構)
-4. [現階段可執行流程（Phase 0）](#現階段可執行流程phase-0)
-5. [`&nf -Y` match file 語意回顧](#nf--y-match-file-語意回顧)
-6. [Multi-Output 的核心問題](#multi-output-的核心問題)
-7. [提議：`nf_y_multi` 擴充格式](#提議nf_y_multi-擴充格式)
-8. [ABC literal 對齊規則](#abc-literal-對齊規則)
-9. [mockturtle → match file 轉換規劃](#mockturtle--match-file-轉換規劃)
-10. [GradMap 擴充規劃](#gradmap-擴充規劃)
-11. [實作階段路線圖](#實作階段路線圖)
-12. [驗證策略](#驗證策略)
-13. [風險與限制](#風險與限制)
-14. [附錄：檔案與命令速查](#附錄檔案與命令速查)
+2. [策略轉向：為何改走 ABC emap](#策略轉向為何改走-abc-emap)
+3. [目標與非目標](#目標與非目標)
+4. [整體架構](#整體架構)
+5. [現階段可執行流程（Phase 0）](#現階段可執行流程phase-0)
+6. [`&nf -Y` match file 語意回顧](#nf--y-match-file-語意回顧)
+7. [Multi-Output 的核心問題](#multi-output-的核心問題)
+8. [提議：`nf_y_multi` 擴充格式](#提議nf_y_multi-擴充格式)
+9. [ABC emap match dump 實作規劃](#abc-emap-match-dump-實作規劃)
+10. [ABC literal 對齊規則](#abc-literal-對齊規則)
+11. [GradMap 擴充規劃](#gradmap-擴充規劃)
+12. [實作階段路線圖](#實作階段路線圖)
+13. [驗證策略](#驗證策略)
+14. [風險與限制](#風險與限制)
+15. [附錄：檔案與命令速查](#附錄檔案與命令速查)
 
 ---
 
@@ -32,31 +33,53 @@
 | 元件 | 路徑 | 能力 |
 |------|------|------|
 | `graduate-abc` | `third_party/GRADUATE/build_abc_frontend/graduate-abc` | ABC 合成、`&nf`、`&nf -Y`、GradMap |
-| balance flow | `scripts/run_abc_syn_map.sh --flow balance` | 產生 `&nf -Y` match + Verilog |
-| mockturtle | `third_party/mockturtle` | `emap` multi-output 映射（GENLIB） |
+| balance flow | `scripts/run_abc_syn_map.sh --flow balance` | 產生 `&nf -Y` match + Verilog（**SO only**） |
+| **ABC-native emap** | `third_party/GRADUATE/.../src/map/emap/`（已併入） | MOG multi-output mapping + **`emap -Y`** match dump |
+| mockturtle `mo_techmap` | `build/mo_techmap` | 讀 `synth.aig` + GENLIB → mapped Verilog（驗證用） |
 | multi-output libcell | `output/asap7_libcell_info_v2_multi_output.txt` | 含 FA/HA（**GradMap 尚未能讀**） |
 | EPFL benchmarks | `third_party/benchmarks/EPFL/` | 透過 `data/epfl/*.yaml` 選取 |
+
+### ABC 來源差異（重要）
+
+| ABC tree | 路徑 | `emap` | `&nf -Y` | 目前腳本用？ |
+|----------|------|--------|----------|--------------|
+| **repo `third_party/abc`** | berkeley-abc + emap port | ✅ `emap [-amvh] [-Y] [-M]` | ❌ | 等價驗證 |
+| **GRADUATE bundled ABC** (`emap-Y` branch) | `third_party/GRADUATE/third_party/abc/abc` | ✅ `emap -Y` | ✅ | ✅ `graduate-abc` |
 
 ### 尚未實作
 
 | 項目 | 說明 |
 |------|------|
-| ABC ↔ mockturtle 單一命令整合 | 無 `graduate-abc` 內建 emap |
-| mockturtle → `&nf -Y` 轉換器 | mockturtle 不原生輸出此格式 |
 | GradMap multi-output binding | 選擇單位仍是 per-root literal |
 | `libcell_info_v2_multi_output` loader | `MapLibrary` 僅支援 single-output |
-| 根目錄 `mo_techmap` 工具 | `docs/MOCKTURTLE.md` 中規劃，尚未建立 |
+| GradMap `nf_y_multi` parser | 需讀 `BIND` / `MBIND` |
 
 ### 關鍵事實
 
 ```text
-asap7.lib
-  ├─ 167 個 single-output cell  → ABC &nf -Y + GradMap ✓
-  └─ 2 個 multi-output cell (FA, HA)  → mockturtle emap ✓
-                                       → 現有 GradMap ✗
+asap7.lib / GENLIB
+  ├─ single-output cells  → &nf -Y + GradMap ✓
+  └─ FA/HA (MOG twin gates) → ABC emap ✓（內部已有 TwinObj binding）
+                              → &nf -Y 因 libcell 限制 ✗
+                              → emap -Y match dump ✓（Phase 2a/2b）
+                              → GradMap binding 訓練 ✗（Phase 3）
 ```
 
-ABC `&nf -Y` 對 FA/HA 即使出現在 `asap7.lib`，也會因 `asap7_libcell_info.txt` 不含 FA/HA 而在 GradMap 訓練階段失敗。multi-output 必須走 mockturtle 或擴充後的 GradMap 路徑。
+---
+
+## 策略轉向：為何改走 ABC emap
+
+先前規劃以 mockturtle `mo_match_exporter` 合併 `&nf -Y` + mockturtle emap 結果。改走 **ABC emap 直接產 match file** 的理由：
+
+| 面向 | mockturtle 外掛 exporter | ABC emap 內建 dump |
+|------|--------------------------|-------------------|
+| MO binding 資料 | 需從 `block_network` 事後推斷 pairing | **已有** `TwinObj`/`TwinPhase`、`Emap_Tuple_t` |
+| literal 對齊 | mockturtle node ↔ GIA lit（`aig_balance` 會破壞） | 同一 ABC session 內 `read_aiger; strash; emap` |
+| 候選列舉 hook | 需 patch `emap.hpp`（5000+ 行 header） | 在 `emapCore.c` cut × cell / MOG tuple 迴圈加 dump |
+| 參考實作 | 無 | 可對照 `giaNf.c` 的 `Nf_ManDumpMatchesCovers()` |
+| 部署 | 額外 binary `mo_techmap` | 單一 `graduate-abc` |
+
+mockturtle `mo_techmap` **保留為 Phase 0**：驗證 multi-output mapping QoR 與 CEC，不作為 match file 主路徑。
 
 ---
 
@@ -64,103 +87,87 @@ ABC `&nf -Y` 對 FA/HA 即使出現在 `asap7.lib`，也會因 `asap7_libcell_in
 
 ### 目標
 
-1. **短期**：用 `graduate-abc` 合成 + mockturtle `emap` 產生含 FA/HA 的 mapped Verilog，驗證 area 收益。
-2. **中期**：產生與 `&nf -Y` **語意相容** 的 `.txt`，讓 GradMap 能讀取並優化（含 multi-output）。
-3. **長期**：GradMap 支援 **binding-level** 聯合選擇，解決同一 FA/HA 出現在多個 root literal 的機率耦合問題。
+1. **短期（Phase 0）**：mockturtle `mo_techmap` 驗證 FA/HA mapping 與 area 收益（已完成 adder  smoke test）。
+2. **中期（Phase 1–2）**：在 `graduate-abc` 內實作 `emap -Y <file>`，輸出 `nf_y_multi` match file（含 MO binding）。
+3. **長期（Phase 3）**：GradMap binding-level 訓練，讓同一 FA/HA 出現在兩個 root 的候選透過 `bind_id` 聯合優化。
 
 ### 非目標（目前階段）
 
-- 在 `graduate-abc` 內直接連結 mockturtle（可作為 Phase 4 選項）
-- 取代 ABC `&nf` 的全部候選列舉邏輯（emap 與 `&nf` 候選空間不完全相同）
+- 在 `graduate-abc` 內連結 mockturtle C++ library
+- 1:1 複製 `&nf -Y` 的完整候選空間（emap 與 `&nf` cut 列舉不完全相同）
 - 一次完成所有 AOI/OAI multi-output（ASAP7 庫僅 FA/HA 為 true multi-output）
 
 ---
 
 ## 整體架構
 
-### 目標管線（完整版）
+### 目標管線（ABC emap 主路徑）
 
 ```text
-                    ┌──────────────────────────┐
-  design.aig ──────►│ graduate-abc             │
-                    │  strash / resyn2 /       │
-                    │  balance / deepsyn       │
-                    └────────────┬─────────────┘
-                                 │ synth.aig（單一真相來源）
-           ┌─────────────────────┼─────────────────────┐
-           ▼                     ▼                     ▼
-  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐
-  │ ABC &nf -Y      │  │ mockturtle emap │  │ literal map     │
-  │ (SO candidates) │  │ (MO mapping)    │  │ AIG↔ABC lit     │
-  └────────┬────────┘  └────────┬────────┘  └────────┬────────┘
-           │                    │                      │
-           └──────────┬─────────┴──────────────────────┘
-                      ▼
-           ┌─────────────────────────┐
-           │ mo_match_exporter       │  ← 待實作
-           │  merge → nf_y_multi.txt │
-           └────────────┬────────────┘
-                        ▼
-           ┌─────────────────────────┐
-           │ graduate-abc gradmap    │  ← 需擴充
-           │  binding-aware training │
-           └────────────┬────────────┘
-                        ▼
-                  mapped Verilog
+  design.aig
+       │
+       ▼
+┌──────────────────────────┐
+│ graduate-abc             │
+│  balance synth           │
+│  write_aiger synth.aig   │  ← 單一 AIG 真相來源
+└────────────┬─────────────┘
+             │
+             ▼
+┌──────────────────────────┐
+│ graduate-abc（同 binary） │
+│  read_aiger synth.aig    │
+│  strash                  │
+│  read_genlib <mo.genlib> │
+│  emap -Y matches.txt     │  ← 待實作：SO + MO 候選 + MBIND
+│  write_verilog mapped.v  │
+└────────────┬─────────────┘
+             │
+             ▼
+┌──────────────────────────┐
+│ graduate-abc gradmap     │  ← Phase 3：nf_y_multi parser
+│  binding-aware training  │
+└────────────┬─────────────┘
+             ▼
+       mapped Verilog
 ```
 
-### 現階段可跑通的簡化管線（Phase 0）
+### 候選來源（單一 mapper，不再混合 `&nf -Y`）
+
+```text
+emap -Y matches.nf_y_multi.txt
+  ├─ SO 候選：Emap_NodeMatch 的 cut × Emap_Cell（類 &nf -Y per-root 行）
+  ├─ MO 候選：Emap_ManPackMogs / Emap_Tuple_t 試过的 MOG（兩 root 各一行 + bind_id）
+  ├─ M  記錄：SO 已選 mapping（TwinObj < 0 的 node）
+  └─ MBIND：MO 已選 binding（TwinObj 配對）
+```
+
+可選 **L1+ 混合模式**：`emap -Y` 同時讀取既有 `&nf -Y` 檔合併 SO 候選（當 emap SO 列舉不如 `&nf` 完整時）。
+
+### Phase 0 驗證管線（mockturtle，保留）
 
 ```text
 graduate-abc（合成）→ synth.aig
-mockturtle emap（multi-output GENLIB）→ mapped.v
-graduate-abc cec（等價驗證）
+mo_techmap（mockturtle emap）→ *_mo_mapped.v
+graduate-abc cec
 ```
 
-此管線 **不產生** GradMap 可用的 match file，但可驗證 multi-output mapping 正確性與 QoR。
+見 [`SCRIPTS.md`](SCRIPTS.md) 的 `run_abc_mockturtle_map.sh`。
 
 ---
 
 ## 現階段可執行流程（Phase 0）
 
-> 腳本細節見 [`SCRIPTS.md`](SCRIPTS.md)。
+> 腳本細節見 [`SCRIPTS.md`](SCRIPTS.md)。以下為 **mockturtle 驗證管線**；ABC emap match dump 完成後改為 `run_abc_emap_map.sh`（Phase 2）。
 
-### 一鍵管線（推薦）
+### 一鍵管線
 
 ```bash
 cd ~/research/multi_output_standard_cell
-
-# 建置 mo_techmap + 跑 balance 合成 + mockturtle emap
-./scripts/run_abc_mockturtle_map.sh --build-mo-techmap --cases adder
-
-# 批次（tiny scale，平行）
-./scripts/run_abc_mockturtle_map.sh --scale tiny --parallel --cec
+./scripts/run_abc_mockturtle_map.sh --build-mo-techmap --cases adder --cec
 ```
 
-輸出目錄結構（每個 case）：
-
-```
-output/abc_mockturtle_map_<timestamp>/<case>/
-  synth.aig              # ABC balance 合成後 AIG（無 &nf）
-  synth.log
-  <case>_mo_mapped.v     # mockturtle emap 映射 Verilog
-  stats.txt              # area / delay / multioutput_gates
-  map.log
-```
-
-此管線等同 `run_abc_syn_map.sh --flow balance` **去掉** `&nf -Y` 與 `write_verilog`，改由 `mo_techmap` 做 multi-output mapping。
-
-### Step 1：ABC 合成（僅 AIG）
-
-專用 ABC script：`scripts/abc_syn_balance.abc`
-
-```bash
-./scripts/run_abc_mockturtle_map.sh --cases adder --out output/synth_adder
-# 或只合成、稍後再 map：
-./scripts/run_abc_mockturtle_map.sh --cases adder --skip-synth  # 需已有 synth.aig
-```
-
-手動從 `graduate-abc` 匯出合成後 AIG（與 balance flow 合成段相同）：
+### 手動 balance 合成（與 emap 管線共用 synth.aig）
 
 ```bash
 cd third_party/GRADUATE
@@ -170,86 +177,17 @@ cd third_party/GRADUATE
    &get; &if -y -K 6; &put; balance; rewrite; refactor; balance; \
    rewrite; rewrite -z; balance; refactor -z; rewrite -z; balance; \
    &get; &deepsyn -T 120; strash; \
-   write_aiger /path/to/output/synth/adder.aig; ps"
+   write_aiger /path/to/synth.aig; ps"
 ```
 
-### Step 2：建置 mo_techmap
-
-`mo_techmap` 是本 repo 自己的工具（`src/mo_techmap.cpp`），由**專案根目錄**的 `CMakeLists.txt` 建置，產物落在 **`build/mo_techmap`**（repo root 下的 `build/`，不是 `third_party/mockturtle/build/`）。
-
-#### 為什麼是 `build/`，不是 `third_party/mockturtle/build/`？
-
-本專案目前有**兩套獨立的 CMake build tree**，用途不同：
-
-| Build 目錄 | CMake 入口 | 主要產物 | 用途 |
-|------------|-----------|---------|------|
-| **`build/`**（repo root） | `./CMakeLists.txt` | `build/mo_techmap` | 讀任意 `synth.aig`，跑 multi-output emap，輸出 mapped Verilog |
-| **`third_party/mockturtle/build/`** | `third_party/mockturtle/CMakeLists.txt` | `experiments/emap` 等 | mockturtle 上游 experiment；只吃內建 EPFL benchmark 清單 |
-
-根目錄 `CMakeLists.txt` 透過 `add_subdirectory(third_party/mockturtle)` **嵌入** mockturtle 當函式庫（header-only + `libabcsat` / `libabcesop`），只編譯 `mo_techmap` 需要的部分；**不會**建 `MOCKTURTLE_BUILD_EXPERIMENTS=ON` 的 `emap` experiment。
-
-因此：
-
-- 你在 `third_party/mockturtle/build` 編好的 `emap` **不能**直接拿來 map 自訂 `synth.aig`。
-- `run_abc_mockturtle_map.sh` 預設找的是 **`$ROOT_DIR/build/mo_techmap`**（可用 `--mo-techmap` 或環境變數 `MO_TECHMAP` 覆寫）。
-
-#### 建置命令
-
-在 repo root 執行（`-S .` = source 目錄為當前專案，`-B build` = build 產物寫入 `./build/`）：
-
-```bash
-cd ~/research/multi_output_standard_cell
-
-cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
-cmake --build build -j$(nproc) --target mo_techmap
-# 產物：./build/mo_techmap
-```
-
-或用腳本自動建置（內部同樣是 `cmake -S $ROOT_DIR -B $ROOT_DIR/build`）：
-
-```bash
-./scripts/run_abc_mockturtle_map.sh --build-mo-techmap --cases adder
-```
-
-`build/` 為本機編譯產物，不需 commit；若已存在 `third_party/mockturtle/build/`，兩者互不影響，可並存。
-
-若只想跑 mockturtle 上游 EPFL 回歸（非本管線），仍可在 mockturtle 子目錄單獨建置：
-
-```bash
-cd third_party/mockturtle
-cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DMOCKTURTLE_BUILD_EXPERIMENTS=ON
-cmake --build build -j$(nproc) --target emap
-# 產物：third_party/mockturtle/build/experiments/emap
-```
-
-### Step 3：mockturtle multi-output 映射
-
-使用 repo root 建出的 `mo_techmap`（預設路徑）：
+### mockturtle mapping（驗證用）
 
 ```bash
 ./build/mo_techmap \
-  --aig output/.../adder/synth.aig \
+  --aig output/.../synth.aig \
   --genlib third_party/mockturtle/experiments/cell_libraries/multioutput.genlib \
-  --out output/.../adder/adder_mo_mapped.v \
-  --stats output/.../adder/stats.txt
-```
-
-GENLIB 路徑在 `third_party/mockturtle/...` 是因為 cell library **檔案**放在 mockturtle 子模組內；與 binary 建在 `build/` 無關。
-
-參數要點（見 `emap.hpp`，已寫死在 `src/mo_techmap.cpp`）：
-
-```cpp
-ps.map_multioutput = true;
-ps.area_oriented_mapping = true;  // 算術電路較易選到 FA/HA（預設）
-// --delay-oriented 可改為 delay-oriented mapping
-```
-
-### Step 4：等價驗證
-
-```bash
-cd third_party/GRADUATE
-./build_abc_frontend/graduate-abc -c \
-  "read -m mapped.v; read_aiger synth.aig; cec"
+  --out output/.../adder_mo_mapped.v \
+  --stats output/.../stats.txt
 ```
 
 ---
@@ -258,8 +196,6 @@ cd third_party/GRADUATE
 
 現有 GradMap 消費的格式（見 `third_party/GRADUATE/docs/gradmap_refactor.md`）：
 
-### 記錄類型
-
 | 類型 | 格式 | 範例 |
 |------|------|------|
 | PI | `<lit> input <area>` | `2 input 0.00` |
@@ -267,96 +203,70 @@ cd third_party/GRADUATE
 | PO | `<po_lit> output <area> <driver_lit>` | `198 output 0.00 140` |
 | 已選 | `M<root_lit> <cell> <area> <fanins...>` | `M16 AND2x2... 0.09 8 10` |
 
-### 關鍵語意
+參考實例：`output/abc_syn_map_20260709_201016/ctrl/ctrl.txt`。
 
-- **`root_lit`**：ABC literal（`2*node + phase`），一個候選只服務 **一個** root。
-- **`M` 記錄**：ABC mapper 的 warm start；GradMap 預設 `abc_selected_logit_prob` 策略讀取。
-- **候選列舉**：`&nf -Y` 對每個 AIG AND 節點的每個相位列舉多個 cell 實作，GradMap 在 per-root softmax 群組內優化。
-
-參考實例：`output/abc_syn_map_20260709_201016/ctrl/ctrl.txt`（1646 行，含候選 + `M` 記錄）。
+`emap -Y` 輸出的 **SO 區段**應與上述相容；**MO 區段**使用下方 `nf_y_multi` 擴充。
 
 ---
 
 ## Multi-Output 的核心問題
 
-### 問題 1：一個 cell、多個 root
+### 一個 cell、兩個 root
 
-以 `FAx1_ASAP7_75t_R` 為例，同一物理 instance 有兩個輸出：
+以 `FAx1_ASAP7_75t_R` 為例：
 
-| 輸出 pin | 邏輯角色 | 在 AIG 中 |
-|----------|----------|-----------|
-| `CON` | carry（反相） | 某 internal node 的 literal `lit_c` |
-| `SN` | sum（反相） | 另一 internal node 的 literal `lit_s` |
+| 輸出 pin | 在 AIG 中 |
+|----------|-----------|
+| `CON` | root literal `lit_c` |
+| `SN` | root literal `lit_s` |
 
-在 **現有 GradMap** 中，`lit_c` 與 `lit_s` 是 **兩個獨立的 softmax 群組**：
+現有 GradMap 把 `lit_c`、`lit_s` 當 **兩個獨立 softmax 群組** → 可能各選一次 FAx1、面積算兩次。
 
-```text
-root = lit_c  →  { FAx1@fanins, XOR+AND 分解, ... }   ← 獨立機率
-root = lit_s  →  { FAx1@fanins, XOR+AND 分解, ... }   ← 獨立機率
+### ABC emap 已解決 mapping 層的 binding
+
+`Emap_MogApply()` 在套用 MOG 時設定：
+
+```c
+pBest0->TwinObj = pEntry1->ObjId;
+pBest0->TwinPhase = pEntry1->Phase;
+pBest1->TwinObj = pEntry0->ObjId;
+pBest1->TwinPhase = pEntry0->Phase;
+pBest0->Flow = pBest1->Flow = pMog->Area;  // 面積只計一次
 ```
 
-這會導致：
+match dump 的任務是把这个 **已有的 binding 語意** 寫進檔案，供 GradMap 訓練時重用。
 
-1. **不一致選擇**：`lit_c` 選 FAx1，`lit_s` 選 XOR+AND 分解
-2. **面積重複計算**：兩個 root 各選一次 FAx1 → area 被算兩次
-3. **語意錯誤**：FAx1 是單一 instance，不能獨立為兩個輸出各選一次
-
-這就是你提到的：**同一個 multi-output match selection 會出現在多個 AIG root node 的候選裡**，但它們必須 **綁定在一起選**，不能獨立優化。
-
-### 問題 2：候選如何「出現多次」
-
-對一個 FA binding `B = (FAx1, fanins={A,B,CI})`，在 match file 中應表達為：
+### 候選如何出現在兩個 root 下
 
 ```text
-# 同一 binding 出現在兩個 root 的候選列表中
-lit_c  FAx1_ASAP7_75t_R  0.20412  3  lit_A lit_B lit_CI  0  BIND:42  ROLE:CON
-lit_s  FAx1_ASAP7_75t_R  0.20412  3  lit_A lit_B lit_CI  0  BIND:42  ROLE:SN
+lit_c  FAx1_ASAP7_75t_R  0.20412  3  lit_A lit_B lit_CI  0  BIND:42
+lit_s  FAx1_ASAP7_75t_R  0.20412  3  lit_A lit_B lit_CI  0  BIND:42
 
-# 單輸出分解替代（僅出現在各自 root）
-lit_c  AND3x1...  ...
-lit_c  XOR2x2...  ...
-lit_s  XOR2x2...  ...
+lit_c  AND3x1...  ...   # SO 分解替代，僅 lit_c
+lit_s  XOR2x2...  ...   # SO 分解替代，僅 lit_s
+
+MBIND 42 FAx1_ASAP7_75t_R 0.20412 lit_A lit_B lit_CI
 ```
-
-兩條 `FAx1` 候選共享 **`BIND:42`**，GradMap 訓練時對 binding 42 只維護 **一組** 機率權重。
-
-### 問題 3：mockturtle 與 ABC 候選空間不同
-
-| 來源 | 候選生成 | Multi-output |
-|------|----------|--------------|
-| ABC `&nf -Y` | cut + library match，完整列舉 | 不支援 FA/HA（libcell 限制） |
-| mockturtle `emap` | emap cut + GENLIB | 支援 FA/HA binding |
-
-因此務實策略是 **混合**：
-
-- **SO 候選**：沿用 ABC `&nf -Y`（覆蓋率高、與現有 GradMap 相容）
-- **MO 候選 + 初始映射**：由 mockturtle `emap` 注入，並標註 `BIND` id
 
 ---
 
 ## 提議：`nf_y_multi` 擴充格式
-
-在不破壞現有 `nf_y_parser` 的前提下，建議新格式 `nf_y_multi`（或於檔頭宣告版本）。
 
 ### 檔頭
 
 ```text
 # format: nf_y_multi_v1
 # source_aig: /path/to/synth.aig
-# liberty: asap7.lib
+# genlib: multioutput.genlib
 # libcell: asap7_libcell_info_v2_multi_output.txt
-# mo_mapper: mockturtle_emap
-# so_candidates: abc_nf_y
+# mo_mapper: abc_emap
+# literal_space: abc_strash
 ```
 
-### 候選記錄（擴充欄位，向後相容策略）
-
-**方案 A（推薦）：獨立 binding 表 + 精簡候選行**
-
-候選行維持現有格式，額外在檔尾增加 binding 區塊：
+### 方案 A（推薦）：候選行 + BIND 區塊
 
 ```text
-# --- candidates (compatible with nf_y v1) ---
+# --- candidates (nf_y v1 compatible) ---
 16 AND2x2_ASAP7_75t_R 0.09 2 8 10 0
 ...
 
@@ -370,193 +280,284 @@ BIND 42 FAx1_ASAP7_75t_R 0.20412 3 8 10 12 48 50
 MBIND 42 FAx1_ASAP7_75t_R 0.20412 8 10 12
 ```
 
-欄位說明：
-
-| 記錄 | 語意 |
-|------|------|
-| `BIND <id> <cell> <area> <n_fanins> <fanins...> <root_lit_1> <root_lit_2> ...` | 定義一個 MO binding |
-| `ROOTS` | 此 binding 驅動的所有 ABC root literal |
-| `ROLES` | 對應輸出 pin 名稱（CON/SN） |
-| `FANINS` | 共用輸入 literal（順序與 Liberty pin 一致） |
-| `COVER` | cover 節點數（可為 0，與現有格式一致） |
-| `MBIND` | mockturtle/emap 或 ABC 選中的 binding warm start |
-
-**方案 B：候選行重複 + 共享 binding id**
-
-在現有候選行尾加可選欄位：
+### 方案 B：候選行尾 `bind_id`
 
 ```text
 <root_lit> <cell> <area> <n_leaves> <leaves...> <n_cover> <cover...> <bind_id>
 ```
 
-- `bind_id = 0`：一般 single-output 候選（與現有相同）
-- `bind_id > 0`：屬於某 MO binding；同一 `bind_id` 可出現在多個 `root_lit` 行
+- `bind_id = 0`：SO 候選
+- `bind_id > 0`：MO binding 成員；同一 id 跨多個 `root_lit`
 
-GradMap parser 看到相同 `bind_id` 時，不把它們當獨立 softmax 變數，而合併為一個 **binding group**。
+### `M` / `MBIND` warm start
 
-### `M` 記錄的擴充
+| 記錄 | 用途 |
+|------|------|
+| `M<root_lit> ...` | SO 已選（`TwinObj < 0`） |
+| `MBIND <id> ...` | MO 已選 binding（`TwinObj >= 0` 配對） |
 
-現有：
+---
 
-```text
-M<root_lit> <cell> <area> <fanins...>
-```
+## ABC emap match dump 實作規劃
 
-建議新增：
-
-```text
-MB<bind_id> <cell> <area> <fanins...>
-```
-
-- `M`：single-output warm start（保持不變）
-- `MB`：multi-output binding warm start（一個 binding 只寫一次）
-
-### HA 範例
+### Step 0：合併 emap 進 GRADUATE ABC
 
 ```text
-BIND 7 HAxp5_ASAP7_75t_R 0.13122 2 4 6 22 24
-  ROOTS 22 24
-  ROLES CON SN
-  FANINS 4 6
-  COVER 0
-
-MBIND 7 HAxp5_ASAP7_75t_R 0.13122 4 6
+third_party/abc/src/map/emap/
+  emap.c
+  emapCore.c
+  emap.h
+  module.make
+        │
+        ▼ copy / merge
+third_party/GRADUATE/third_party/abc/abc/src/map/emap/
+        │
+        ▼ register
+mainInit.c: Emap_Init()
+module.make: SRC += src/map/emap/...
 ```
+
+驗證：`graduate-abc -c "read_genlib ...; emap -h"` 可顯示 help。
+
+### Step 1：命令列擴充
+
+修改 `third_party/.../emap/emap.c` 的 `Emap_Command()`：
+
+```text
+usage: emap [-amvh] [-Y <match.txt>] [-M <level>]
+
+  -Y file   dump nf_y_multi match file（新增）
+  -M level  候選列舉級別：1=warm start only, 2=+MOG trials, 3=+full SO cuts（新增）
+  -a -m -v -h  （既有）
+```
+
+在 `Emap_ManMapAigStructural()` 末尾、回傳 `pNtkNew` 前，若 `YFile != NULL` 呼叫 `Emap_ManDumpMatches()`。
+
+### Step 2：新增 `Emap_ManDumpMatches()`（`emapCore.c`）
+
+參考 `giaNf.c` 的 `Nf_ManDumpMatchesCovers()` 結構：
+
+```c
+void Emap_ManDumpMatches(
+    Abc_Ntk_t * pNtk,
+    Emap_Obj_t * pMaps,
+    Emap_Lib_t * pLib,
+    Emap_Tuples_t * pTuples,   // 可選：MOG trial 記錄
+    char * pYFile,
+    int nDumpLevel,
+    int fVerbose );
+```
+
+#### 2.1 寫檔頭與 PI/PO
+
+```c
+// PI
+Abc_NtkForEachPi( pNtk, pObj, i )
+    fprintf( pFile, "%d input 0.00\n", Emap_ObjToLit(pObj, 0) );
+
+// PO
+Abc_NtkForEachPo( pNtk, pObj, i )
+    fprintf( pFile, "%d output 0.00 %d\n",
+        Emap_ObjToLit(pObj, 0), Emap_ObjToLit(Abc_ObjFanin0(pObj), Abc_ObjFaninC0(pObj)) );
+```
+
+#### 2.2 SO 候選（`-M >= 3`）
+
+對每個 AND node `ObjId`、phase `p ∈ {0,1}`，遍歷 `pMaps[ObjId].Cuts[]`：
+
+```c
+// 對每個 cut × Emap_LibFindFirst 匹配的 Emap_Cell
+fprintf( pFile, "%d %s %.5f %d", root_lit, cell_name, area, n_fanins );
+for ( k = 0; k < n_fanins; k++ )
+    fprintf( pFile, " %d", Emap_LeafToLit(pNtk, pMaps, cut, pin_k) );
+fprintf( pFile, " 0\n" );   // n_cover = 0（L1 可省略 cover 列舉）
+```
+
+邏輯對照 `Emap_NodeMatch()` + `Nf_ManDumpMatchesCovers()` 的候選行格式。
+
+#### 2.3 MO 候選（`-M >= 2`）
+
+遍歷 MOG packing / exact trial 期間的 `Emap_Tuple_t`：
+
+```c
+// 對 tuple (Obj0, Phase0, Obj1, Phase1, Mog, fSwap)
+int bind_id = ...;
+char * cell_name = Emap_MogCellName(pLib, pMog);  // 見下方命名規則
+int root0 = Emap_ObjPhaseToLit(Obj0, Phase0);
+int root1 = Emap_ObjPhaseToLit(Obj1, Phase1);
+// 兩條候選行（方案 B）或 BIND 區塊（方案 A）
+```
+
+資料來源：
+
+| 來源 | 用途 |
+|------|------|
+| `Emap_ManPackMogs()` | area-oriented MOG 候選 |
+| `Emap_ManRecoverMogsExact*()` | exact recovery 試过的 tuple |
+| `pMaps[].Best[].TwinObj >= 0` | 已選 MBIND |
+
+#### 2.4 Warm start：`M` 與 `MBIND`
+
+```c
+Abc_AigForEachAnd( pNtk, pObj, i ) {
+    for ( p = 0; p < 2; p++ ) {
+        Emap_Best_t * b = &pMaps[i].Best[p];
+        if ( !Emap_BestIsUsed(pRefs, i, p) ) continue;
+        if ( b->TwinObj >= 0 && i > b->TwinObj ) continue;  // 每對只寫一次 MBIND
+        if ( b->TwinObj >= 0 )
+            Emap_DumpMBind(...);
+        else
+            Emap_DumpM(...);
+    }
+}
+```
+
+### Step 3：literal 輔助函式
+
+```c
+static inline int Emap_ObjPhaseToLit( int ObjId, int Phase )
+{
+    return Abc_Var2Lit( ObjId, Phase );  // 2*ObjId + Phase
+}
+
+static int Emap_LeafToLit( Abc_Ntk_t * pNtk, Emap_Obj_t * pMaps,
+                           Emap_Cut_t * pCut, int pin, int pin_phase );
+```
+
+### Step 4：MOG cell 命名
+
+ABC emap 內部用 GENLIB **twin gate**（`Mio_GateReadTwin`）：`pGate0`/`pGate1` 為同一物理 cell 的兩個輸出。
+
+Exporter 規則：
+
+```text
+physical_name = Mio_GateReadName(pGate0) 去掉輸出後綴
+或讀 twin 的 base cell 名（與 asap7.lib / libcell_info 對齊）
+
+ROLES = Mio_GateReadOutName(pGate0), Mio_GateReadOutName(pGate1)
+  → 例如 CON, SN
+```
+
+需維護 **GENLIB twin 名 → Liberty 物理 cell 名** 對照表（可放在 `scripts/` 或 emap dump 時查 `asap7.lib`）。
+
+### Step 5：分級實作（`-M` level）
+
+| Level | SO 候選 | MO 候選 | MBIND/M | 用途 |
+|-------|---------|---------|---------|------|
+| **1** | 僅已選 | 僅已選 | ✅ | 最快驗證 GradMap binding 路徑 |
+| **2** | 僅已選 | MOG trial 列舉 | ✅ | 有 MO 替代可優化 |
+| **3** | cut × cell 完整 | MOG trial 列舉 | ✅ | 接近 `&nf -Y` 覆蓋率 |
+
+**建議順序**：Level 1 → GradMap parser → Level 2 → Level 3。
+
+### Step 6：整合腳本（規劃）
+
+`scripts/run_abc_emap_map.sh`：
+
+```bash
+# Phase 2 目標用法
+./scripts/run_abc_emap_map.sh --cases adder --dump-level 1
+
+# 內部等效 ABC 命令（render 後）
+read_aiger synth.aig
+strash
+read_genlib third_party/mockturtle/experiments/cell_libraries/multioutput.genlib
+emap -a -m -Y output/.../matches.nf_y_multi.txt -M 1
+write_verilog output/.../adder_emap_mapped.v
+```
+
+### 修改檔案清單
+
+| 檔案 | 變更 |
+|------|------|
+| `third_party/GRADUATE/third_party/abc/abc/src/map/emap/*` | 從 repo `third_party/abc` 合併 |
+| `.../emap/emap.h` | 宣告 `Emap_ManDumpMatches`、dump params |
+| `.../emap/emap.c` | `-Y`、`-M` 參數解析 |
+| `.../emap/emapCore.c` | `Emap_ManDumpMatches` 主體；在 tuple 迴圈加 hook |
+| `.../base/main/mainInit.c` | `Emap_Init`（合併時確認） |
+| `scripts/abc_emap_map.abc` | ABC 模板（新建） |
+| `scripts/run_abc_emap_map.sh` | 批次 runner（新建） |
+| `docs/SCRIPTS.md` | 登錄新腳本 |
 
 ---
 
 ## ABC literal 對齊規則
 
-match file 中的 literal **必須與 GradMap 讀取的 AIG 一致**。因此：
+### 問題
+
+| 流程 | Network | literal 空間 |
+|------|---------|--------------|
+| `&nf -Y`（現有） | GIA（`&get` 後） | `Abc_Var2Lit(gia_obj, phase)` |
+| `emap`（規劃） | strashed `Abc_Ntk` | `Abc_Var2Lit(abc_obj_id, phase)` |
+
+同一 `synth.aig` 讀入後，**GIA obj id 與 strash ObjId 不一定相同**。
 
 ### 規則 1：單一 AIG 真相來源
 
 ```text
-graduate-abc 合成 → write_aiger synth.aig
+graduate-abc balance synth → write_aiger synth.aig
                               ↓
-         所有後續步驟（&nf -Y、emap、gradmap）都讀此檔
+         emap / gradmap 都從此檔開始
 ```
 
-### 規則 2：literal 編碼
+### 規則 2：短期——統一用 strash 空間
+
+GradMap 讀取 emap match 時，**不使用 `&get`**，改為：
 
 ```text
-abc_lit = 2 * gia_obj_id + phase
-node    = abc_lit >> 1
-phase   = abc_lit & 1
+read_aiger synth.aig
+strash          # 與 emap dump 相同拓撲
+gradmap -match matches.nf_y_multi.txt -match-format nf_y_multi ...
 ```
 
-與 `graduate::map::map_literal_from_abc_lit()` 一致（見 `nf_y_parser.cpp`）。
+match 檔頭標註 `literal_space: abc_strash`。
 
-### 規則 3：mockturtle node → ABC literal 映射表
+### 規則 3：中期——GIA literal bridge
 
-`mo_match_exporter` 需產生 sidecar 檔 `literal_map.tsv`：
+在 `read_aiger; &get; strash` 同一 session 建立 `Vec_Int` 對照表：
+
+```c
+// Gia_ObjId → Abc_ObjId（或反查）
+// 寫檔時輸出 gia_lit；sidecar: literal_map.tsv
+```
+
+供 GradMap 維持 `&get` + GIA 流程時使用。實作可參考 ABC `Abc_NtkFromAig()` 內部 obj 對應。
+
+### 規則 4：編碼
 
 ```text
-# mockturtle_node  abc_lit  note
-42                 96       AND node
-43                 98       inverted phase
+lit = 2 * obj_id + phase
+node  = lit >> 1
+phase = lit & 1
 ```
 
-建立方式：
-
-1. 讀取 `synth.aig` 進 ABC 與 mockturtle（lorina）
-2. 對每個 mockturtle internal node，用布林函式/simulation 對齊 ABC `gia` node
-3. 對 adder 提取後的 `fa`/`ha` 節點，對齊到對應的 sum/carry driver literals
-
-這是 **Phase 2 最關鍵的工程步驟**；沒有對齊表就不能產生正確的 `&nf -Y` 相容檔。
-
----
-
-## mockturtle → match file 轉換規劃
-
-### 元件：`mo_match_exporter`（待實作）
-
-建議路徑：`src/mo_match_exporter.cpp` 或 `scripts/export_mo_matches.py`（若先用 Python 原型）。
-
-#### 輸入
-
-| 輸入 | 說明 |
-|------|------|
-| `synth.aig` | ABC 合成後 AIG |
-| `so_matches.txt` | 可選；既有 `&nf -Y` 輸出（SO 候選） |
-| `emap_result` | mockturtle `cell_view<block_network>` 或 serialized mapping |
-| `genlib` / `liberty` | cell 面積、pin 順序 |
-| `libcell_info_v2_multi_output` | timing 驗證用 |
-
-#### 輸出
-
-| 輸出 | 說明 |
-|------|------|
-| `matches.nf_y_multi.txt` | 合併後 match file |
-| `literal_map.tsv` | mockturtle ↔ ABC literal |
-| `bindings.json` | 結構化 binding 描述（除錯用） |
-
-#### 演算法概要
-
-```text
-1. 若提供 so_matches.txt：
-     載入 PI / PO / SO 候選 / M 記錄
-2. 遍歷 emap 結果中的 multi-output instances：
-     對每個 FA/HA instance：
-       a. 查 literal_map 得 root_lit_CON, root_lit_SN
-       b. 查 fanin literals（A, B, CI）
-       c. 分配 bind_id
-       d. 寫入 BIND / MBIND 區塊
-       e. 在 root_lit_CON、root_lit_SN 各追加一條候選（相同 bind_id）
-3. 對未綁定區域，保留 SO 候選
-4. 驗證：nf_y_multi parser dry-run
-```
-
-#### 候選列舉來源（務實分級）
-
-| 級別 | SO 候選 | MO 候選 | 說明 |
-|------|---------|---------|------|
-| L1 | ABC `&nf -Y` | emap 已選 mapping  only | 最快；MO 只有 warm start，無替代候選 |
-| L2 | ABC `&nf -Y` | emap 已選 + SO 分解替代 | 手動加入 XOR+AND 分解候選 |
-| L3 | ABC `&nf -Y` | emap cut 列舉 | 需從 emap 內部提取 cut matches（工作量大） |
-
-**建議先做 L1**，驗證 GradMap binding 訓練路徑；再升級 L2/L3。
+與 `graduate::map::map_literal_from_abc_lit()` 一致。
 
 ---
 
 ## GradMap 擴充規劃
 
-### 1. `MapLibrary`：載入 multi-output libcell
+（與先前規劃相同，僅資料來源改為 `abc_emap`。）
 
-- 讀取 `libcell_info_v2_multi_output`（見 `scripts/generate_libcell_info_v2_multi_output.py`）
-- 每個 cell 支援多個 output pin 的 timing arc
+### 1. `MapLibrary`：載入 `libcell_info_v2_multi_output`
 
-### 2. `MapMatch` / `MapBinding` 資料結構
+### 2. `MapBinding` 資料結構
 
 ```text
-現有：MapMatch { root, cell_name, fanins, cover }
-新增：MapBinding {
-  bind_id,
-  cell_name,
-  fanins,
-  roots: [lit_c, lit_s],
-  roles: [CON, SN],
-  matches: [match_id_c, match_id_s]  // 指向重複候選
+MapBinding {
+  bind_id, cell_name, fanins,
+  roots: [lit_c, lit_s], roles: [CON, SN]
 }
 ```
 
-### 3. 機率模型：從 per-root 到 per-binding
-
-| 層級 | 選擇變數 | softmax 群組 |
-|------|----------|--------------|
-| 現有 SO | 每個 root literal | 該 root 下所有候選 |
-| 新增 MO | 每個 `bind_id` | 該 binding 的替代實作（FAx1 vs 分解） |
-| 跨 root 耦合 | 同一 `bind_id` 的兩條候選 | **共享同一權重** |
-
-訓練時：
+### 3. 機率模型：per-binding softmax
 
 ```text
-softmax_group(binding=42) = { FAx1@fanins, XOR2+AND_decomp, ... }
-選中 FAx1 → lit_c 與 lit_s 同時生效
-area(binding=42) 只計一次 0.20412
+softmax_group(binding=42) = { FAx1@fanins, XOR+AND_decomp, ... }
+選中 FAx1 → lit_c 與 lit_s 同時生效；area 只計一次
 ```
 
-### 4. `gradmap` 命令擴充
+### 4. `gradmap` 命令
 
 ```text
 gradmap -match matches.nf_y_multi.txt -match-format nf_y_multi \
@@ -564,80 +565,59 @@ gradmap -match matches.nf_y_multi.txt -match-format nf_y_multi \
         -skip-nf-y
 ```
 
-- `-skip-nf-y`：不重新跑 ABC `&nf -Y`，直接讀取提供之 match file
-- 需確保 ABC frame 中已載入與 match file 對應的 `synth.aig`
-
-### 5. warm start
-
-- `M` 記錄 → 現有 per-root warm start（不變）
-- `MB` / `MBIND` 記錄 → binding-level warm start（新增）
-
 ---
 
 ## 實作階段路線圖
 
 ```text
-Phase 0  [現在可做]  ABC 合成 + mockturtle emap → Verilog + CEC
-Phase 1  [1–2 週]    建 mo_techmap CLI；讀 synth.aig + GENLIB → mapped.v + binding JSON
-Phase 2  [2–4 週]    literal_map 對齊；mo_match_exporter L1 → nf_y_multi.txt
-Phase 3  [4–8 週]    GradMap：libcell MO loader + binding parser + 訓練耦合
-Phase 4  [8+ 週]    候選列舉 L2/L3；與 ABC &nf -Y 合併；根目錄 CMake 統一建置
+Phase 0  [已完成]    mockturtle mo_techmap 驗證管線 + SCRIPTS.md
+Phase 1  [1–2 週]    合併 ABC emap → graduate-abc；emap 可 map（無 -Y）
+Phase 2a [1–2 週]    emap -Y -M 1：MBIND/M + BIND 區塊（warm start only）
+Phase 2b [2–3 週]    emap -Y -M 2/3：MOG/SO 候選列舉；run_abc_emap_map.sh
+Phase 3  [4–8 週]    GradMap：nf_y_multi parser + binding 訓練 + libcell MO
+Phase 4  [可選]      GIA literal bridge；與 &nf -Y SO 候選合併
 ```
-
-### Phase 0 檢查清單
-
-- [ ] `graduate-abc` 已建置
-- [ ] mockturtle `emap` experiment 已建置
-- [ ] 對 `adder` 跑通 synth.aig → emap → mapped.v
-- [ ] `cec` 通過
 
 ### Phase 1 檢查清單
 
-- [ ] 根目錄 `CMakeLists.txt` + `src/mo_techmap.cpp`
-- [ ] 支援 `--aig`、`--genlib`、`--output`、`--map-multioutput`
-- [ ] 輸出 `bindings.json` 列出 FA/HA instances
+- [x] `src/map/emap/` 併入 GRADUATE ABC（branch `emap-Y`）
+- [x] `graduate-abc` 重建成功
+- [x] `read_aiger; strash; read_genlib; emap -a -v` 在 adder 可跑
+- [x] mapped Verilog `cec` 通過
 
-### Phase 2 檢查清單
+### Phase 2a 檢查清單
 
-- [ ] `literal_map.tsv` 產生器
-- [ ] `nf_y_multi_v1` 寫入器
-- [ ] 與現有 `ctrl.txt`（SO-only）格式並存驗證
+- [x] `emap -Y <file>` 參數
+- [x] `Emap_ManDumpMatches()` Level 1
+- [x] 輸出含 `BIND`/`MBIND`（FA/HA 配對；adder 128 MBIND）
+- [ ] GradMap parser dry-run（可先寫 `scripts/validate_nf_y_multi.py`）
+
+### Phase 2b 檢查清單
+
+- [x] MOG tuple 候選 dump（`-M 2`）
+- [x] SO cut 候選 dump（`-M 3`）
+- [x] `scripts/run_abc_emap_map.sh`
+- [x] `docs/SCRIPTS.md` 更新
 
 ### Phase 3 檢查清單
 
-- [ ] `MapLibrary` 讀取 `libcell_info_v2_multi_output`
-- [ ] `nf_y_multi` parser
-- [ ] `MapBinding` + 聯合 softmax / 聯合 area 計費
-- [ ] `gradmap -skip-nf-y -match <file>`
+- [ ] `MapLibrary` 讀取 multi-output libcell
+- [ ] `nf_y_multi` parser + binding softmax
+- [ ] `gradmap -skip-nf-y` 端到端
 
 ---
 
 ## 驗證策略
 
-### 功能驗證
-
 | 檢查 | 方法 |
 |------|------|
-| 合成正確 | ABC `ps` 前後 and/level |
-| MO mapping 正確 | mockturtle stats `multioutput_gates > 0` on adder |
-| 等價性 | `graduate-abc cec` |
-| match file 可解析 | GradMap parser dry-run |
-| binding 一致性 | 選中 FA 後兩個 root 皆有 driver |
+| emap mapping 正確 | `write_verilog` + `cec` vs `synth.aig` |
+| MO binding 在檔案中 | 同一 `bind_id` 出現在兩個 root |
+| MBIND 與 mapped netlist 一致 | 比對 `TwinObj` 配對 |
+| GradMap 可解析 | parser dry-run |
+| QoR | compare `&nf` SO vs `emap -m` MO on adder |
 
-### QoR 驗證
-
-對 `data/epfl/` 的 arithmetic suite：
-
-| 指標 | 比較 |
-|------|------|
-| Area | SO map（ABC `&nf`）vs MO emap vs GradMap MO |
-| Delay | `stime` / mockturtle arrival times |
-| FA/HA 用量 | emap stats vs 預期（adder 約 61 個 MO gates） |
-
-### 回歸
-
-- 現有 SO flow 不受影響：`run_abc_syn_map.sh --flow balance` 產物與現有 `ctrl.txt` 格式一致
-- GradMap 現有 benchmark 在無 `BIND` 區塊時行為不變
+回歸：`run_abc_syn_map.sh --flow balance` 產物不變。
 
 ---
 
@@ -645,11 +625,11 @@ Phase 4  [8+ 週]    候選列舉 L2/L3；與 ABC &nf -Y 合併；根目錄 CMak
 
 | 風險 | 影響 | 緩解 |
 |------|------|------|
-| literal 對齊失敗 | match file 無法被 GradMap 使用 | 先做 adder 等小型 case；產生 `literal_map.tsv` 人工抽查 |
-| emap 不列舉完整候選 | GradMap 無 MO 替代可優化 | L1 僅 warm start；L2 手動加入分解候選 |
-| ASAP7 僅 2 個 MO cell | 收益限於 FA/HA 結構 | 符合目前研究範圍；見 `ASAP7_MULTI_OUTPUT_CELLS.md` |
-| CON/SN 反相邏輯 | 等價但影響 CEC/時序 | 文件中追蹤極性；必要時插入 INV |
-| 記憶體 / 平行 | 大 benchmark 多 process emap | 使用 `data/epfl/` scale 分級跑 |
+| GIA vs strash literal 不一致 | GradMap 讀錯 match | Phase 2 統一 strash；Phase 4 bridge |
+| GENLIB twin 名 ≠ Liberty 名 | parser 找不到 cell | 命名對照表；dump 時用物理 cell 名 |
+| emap SO 候選少於 `&nf -Y` | GradMap SO QoR 下降 | `-M 3` 或 L1+ 合併 `&nf -Y` SO 段 |
+| 僅 2 個 MO cell（FA/HA） | 收益限於算術 | 符合研究範圍 |
+| 合併 ABC fork 衝突 | build 失敗 | 以小 patch 方式移植 `emap/` 目錄 |
 
 ---
 
@@ -658,51 +638,50 @@ Phase 4  [8+ 週]    候選列舉 L2/L3；與 ABC &nf -Y 合併；根目錄 CMak
 ### 現有命令
 
 ```bash
-# SO match + Verilog（balance flow）
+# SO match + Verilog（balance + &nf -Y）
 ./scripts/run_abc_syn_map.sh --flow balance --scale tiny
 
-# 列出 benchmark
-./scripts/list_epfl_benchmarks.sh all
+# mockturtle 驗證（Phase 0）
+./scripts/run_abc_mockturtle_map.sh --cases adder --cec
 ```
 
 ### 規劃中命令
 
 ```bash
-# Phase 1：mockturtle multi-output mapping
-./build/mo_techmap \
-  --aig output/synth/adder.aig \
-  --genlib third_party/mockturtle/experiments/cell_libraries/multioutput.genlib \
-  --output output/mo_map/adder \
-  --map-multioutput
-
-# Phase 2：產生 nf_y_multi
-./build/mo_match_exporter \
-  --aig output/synth/adder.aig \
-  --so-matches output/abc_syn_map_*/adder/adder.txt \
-  --emap-bindings output/mo_map/adder/bindings.json \
-  --out output/mo_map/adder/matches.nf_y_multi.txt
-
-# Phase 3：GradMap（擴充後）
+# Phase 1：確認 emap 可 map
 cd third_party/GRADUATE
 ./build_abc_frontend/graduate-abc -c \
-  "read output/synth/adder.aig; st; \
-   gradmap -skip-nf-y -match output/mo_map/adder/matches.nf_y_multi.txt \
-           -libcell ../output/asap7_libcell_info_v2_multi_output.txt \
-           -work output/gradmap/adder"
+  "read_aiger ../benchmarks/EPFL/arithmetic/adder.aig; strash; \
+   read_genlib ../mockturtle/experiments/cell_libraries/multioutput.genlib; \
+   emap -amv; write_verilog /tmp/adder_emap.v; ps"
+
+# Phase 2：emap match dump
+./build_abc_frontend/graduate-abc -c \
+  "read_aiger output/synth/adder.aig; strash; \
+   read_genlib .../multioutput.genlib; \
+   emap -am -Y output/matches.nf_y_multi.txt -M 1; \
+   write_verilog output/adder_emap_mapped.v"
+
+# Phase 3：GradMap
+./build_abc_frontend/graduate-abc -c \
+  "read_aiger output/synth/adder.aig; strash; \
+   gradmap -skip-nf-y -match output/matches.nf_y_multi.txt \
+           -libcell ../output/asap7_libcell_info_v2_multi_output.txt"
 ```
 
 ### 相關原始碼
 
 | 檔案 | 用途 |
 |------|------|
-| `third_party/GRADUATE/src/map/nf_y_parser.cpp` | 現有 match 解析 |
-| `third_party/GRADUATE/src/map/warm_start.cpp` | ABC `M` 記錄 warm start |
-| `third_party/GRADUATE/src/map/weight_engine.cpp` | per-root softmax 分組 |
-| `third_party/mockturtle/include/mockturtle/algorithms/emap.hpp` | multi-output emap |
-| `scripts/generate_libcell_info_v2_multi_output.py` | MO libcell 產生 |
+| `third_party/abc/src/map/emap/emapCore.c` | MOG binding（`TwinObj`）、**待加 dump** |
+| `third_party/abc/src/map/emap/emap.c` | `emap` 命令入口 |
+| `third_party/GRADUATE/.../gia/giaNf.c` | `Nf_ManDumpMatchesCovers()` 參考 |
+| `third_party/GRADUATE/src/map/nf_y_parser.cpp` | 現有 SO match 解析 |
+| `src/mo_techmap.cpp` | Phase 0 mockturtle 驗證 |
+| `scripts/generate_libcell_info_v2_multi_output.py` | MO libcell |
 
 ---
 
 ## 一句話總結
 
-**現在**可以把 `graduate-abc` 與 mockturtle `emap` 用檔案交接跑通 multi-output mapping；**要產生 GradMap 可用的 match file**，需要新增 `mo_match_exporter` 與 `nf_y_multi` 格式，並在 GradMap 中把選擇單位從 per-root 擴充為 **binding-level**，讓同一 FA/HA 出現在多個 root literal 的候選透過共享 `bind_id` 聯合優化，而不是獨立 softmax。
+**主路徑改為**：把 repo `third_party/abc` 的 **ABC-native emap** 併入 `graduate-abc`，新增 **`emap -Y`** 輸出 `nf_y_multi` match file（利用既有 `TwinObj` MO binding），再擴充 GradMap 做 binding-level 訓練。mockturtle `mo_techmap` 保留為 Phase 0 QoR/CEC 驗證，不再作為 match file 的主要來源。

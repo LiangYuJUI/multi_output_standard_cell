@@ -40,4 +40,5 @@ Extracted RVT FF NLDM libraries live in `third_party/asap7_RVT_FF_nldm/` (gitign
 
 See [`docs/`](docs/) for detailed notes on ASAP7 multi-output cells, GRADUATE, and mockturtle.
 
+- **[`docs/GRADMAP.md`](docs/GRADMAP.md)** — GradMap 技術映射：match file、訓練模型、命令與 multi-output 限制
 - **[`docs/SCRIPTS.md`](docs/SCRIPTS.md)** — `scripts/` 目錄各腳本用法與管線說明（新增/修改 script 時請同步更新）
