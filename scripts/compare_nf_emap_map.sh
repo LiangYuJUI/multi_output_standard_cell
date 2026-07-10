@@ -88,8 +88,15 @@ strip_ansi() {
 }
 
 parse_and() {
-  local log="$1"
+  # Prefer shared post-synth AND written by run_fair_nf_emap_compare.sh.
+  local case_dir="$1" log="$2"
+  if [[ -s "$case_dir/synth_and.txt" ]]; then
+    tr -d '[:space:]' < "$case_dir/synth_and.txt"
+    return
+  fi
   [[ -f "$log" ]] || { echo ""; return; }
+  # Legacy full-flow logs: last "and =" is post-synth (before/around mapping).
+  # Map-only fair logs usually have a single "and =" after reading synth.aig.
   strip_ansi < "$log" | grep -E 'and =' | tail -n1 | \
     sed -n 's/.*and =[[:space:]]*\([0-9][0-9]*\).*/\1/p'
 }
@@ -122,7 +129,13 @@ parse_emap_mbind() {
 find_nf_verilog() {
   local case_dir="$1" case_name="$2"
   local f
-  for f in "$case_dir/${case_name}_balance.v" "$case_dir/${case_name}.v" "$case_dir"/*_balance.v; do
+  for f in \
+    "$case_dir/${case_name}_balance.v" \
+    "$case_dir/${case_name}_nf.v" \
+    "$case_dir/${case_name}.v" \
+    "$case_dir"/*_balance.v \
+    "$case_dir"/*_nf.v
+  do
     [[ -f "$f" ]] && { echo "$f"; return 0; }
   done
   return 1
@@ -395,7 +408,8 @@ n_stime_ok=0
   echo "  - merge twin FA/HA instances; pad unused CON/SN with dummy wires"
   echo "  - \`MAJIx2\` → \`MAJIxp5\` (same function; genlib-only drive strength)"
   echo "  - \`XNOR3x1\` → \`XNOR2x1\` cascade (Liberty-available equivalent)"
-  echo "- Post-synth AND may still differ slightly across runs (\`&deepsyn -T\` time budget)."
+  echo "- Post-synth AND: prefer \`synth_and.txt\` (fair shared AIG); else first \`and =\` in \`run.log\`."
+  echo "- If AND differs across dirs, the two runs did **not** share the same synth.aig (e.g. separate \`&deepsyn -T\`)."
   echo "- **Δ%** = \`(emap - nf) / nf × 100\` (negative ⇒ emap better for that metric)."
   echo "- Cached per-case STA: \`<case>/stime_asap7.txt\`"
   echo
@@ -412,8 +426,8 @@ for case_name in $CASES_LIST; do
   em_stime="$EMAP_DIR/$case_name/stime_asap7.txt"
   em_match="$EMAP_DIR/$case_name/matches.nf_y_multi.txt"
 
-  nf_and="$(parse_and "$nf_log")"
-  em_and="$(parse_and "$em_log")"
+  nf_and="$(parse_and "$NF_DIR/$case_name" "$nf_log")"
+  em_and="$(parse_and "$EMAP_DIR/$case_name" "$em_log")"
   IFS='|' read -r nf_gates nf_area nf_delay <<<"$(parse_stime_line "$nf_stime")"
   IFS='|' read -r em_gates em_area em_delay <<<"$(parse_stime_line "$em_stime")"
   mbind="$(parse_emap_mbind "$em_match")"

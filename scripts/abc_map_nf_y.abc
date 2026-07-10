@@ -1,0 +1,26 @@
+# See docs/SCRIPTS.md
+# Map-only: read a fixed post-synth AIG, then &nf -Y (+ Verilog).
+#
+# Used by run_fair_nf_emap_compare.sh so &nf and emap share the same subject graph.
+#
+# Placeholders:
+#   __INPUT_AIG__      path to shared synth.aig
+#   __LIBERTY__        path to asap7.lib
+#   __MATCH_FILE__     path to &nf -Y match dump
+#   __OUTPUT_V__       path to mapped Verilog
+
+read __INPUT_AIG__
+strash
+ps
+
+read_lib __LIBERTY__
+
+&get
+&nf -Y __MATCH_FILE__
+&put
+
+topo
+stime
+write_verilog __OUTPUT_V__
+read -m __OUTPUT_V__
+ps

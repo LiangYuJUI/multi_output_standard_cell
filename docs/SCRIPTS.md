@@ -13,14 +13,17 @@
 | [`run_abc_syn_map.sh`](../scripts/run_abc_syn_map.sh) | Bash | ABC 合成 + `&nf` / `&nf -Y` mapping，批次跑 EPFL | 使用者 / CI |
 | [`run_abc_mockturtle_map.sh`](../scripts/run_abc_mockturtle_map.sh) | Bash | ABC balance 合成（僅 AIG）+ mockturtle `mo_techmap` | 使用者 |
 | [`run_abc_emap_map.sh`](../scripts/run_abc_emap_map.sh) | Bash | ABC balance 合成 + ABC-native `emap -Y` match dump + Verilog | 使用者 |
+| [`run_fair_nf_emap_compare.sh`](../scripts/run_fair_nf_emap_compare.sh) | Bash | **公平比較**：共用一份 `synth.aig` → map-only `&nf -Y` 與 `emap -Y` → Liberty STA | 使用者 |
 | [`compare_graduate_abc_emap.sh`](../scripts/compare_graduate_abc_emap.sh) | Bash | 比對 standalone `third_party/abc` 與 `graduate-abc` 的 ABC-native `emap` 結果 | 開發者 / CI |
 | [`compare_nf_emap_map.sh`](../scripts/compare_nf_emap_map.sh) | Bash | 比對 `&nf -Y` vs `emap -Y` mapping QoR，輸出 markdown | 使用者 |
 | [`list_epfl_benchmarks.sh`](../scripts/list_epfl_benchmarks.sh) | Bash | 從 `data/epfl/*.yaml` 列出或解析 benchmark | 上述 runners |
 | [`abc_syn_map_resyn2.abc`](../scripts/abc_syn_map_resyn2.abc) | ABC | resyn2 合成 + `&nf` → Verilog | `run_abc_syn_map.sh --flow resyn2` |
 | [`abc_syn_map_deepsyn.abc`](../scripts/abc_syn_map_deepsyn.abc) | ABC | `&deepsyn` 合成 + `&nf` → Verilog | `run_abc_syn_map.sh --flow deepsyn` |
 | [`abc_syn_map_balance.abc`](../scripts/abc_syn_map_balance.abc) | ABC | balance 合成 + `&nf -Y` match + Verilog | `run_abc_syn_map.sh --flow balance` |
-| [`abc_syn_balance.abc`](../scripts/abc_syn_balance.abc) | ABC | balance 合成 only → `synth.aig`（無 mapping） | `run_abc_mockturtle_map.sh` / `run_abc_emap_map.sh` |
-| [`abc_emap_map.abc`](../scripts/abc_emap_map.abc) | ABC | `read_aiger` → `strash` → `read_genlib` → `emap -Y` → Verilog | `run_abc_emap_map.sh` |
+| [`abc_syn_balance.abc`](../scripts/abc_syn_balance.abc) | ABC | balance 合成 only → `synth.aig`（無 mapping） | `run_abc_mockturtle_map.sh` / fair compare |
+| [`abc_map_nf_y.abc`](../scripts/abc_map_nf_y.abc) | ABC | map-only：`read synth.aig` → `&nf -Y` → Verilog | `run_fair_nf_emap_compare.sh` |
+| [`abc_map_emap_y.abc`](../scripts/abc_map_emap_y.abc) | ABC | map-only：`read synth.aig` → `emap -Y` → Verilog | `run_fair_nf_emap_compare.sh` |
+| [`abc_emap_map.abc`](../scripts/abc_emap_map.abc) | ABC | balance 合成 + `emap -Y` → Verilog | `run_abc_emap_map.sh` |
 | [`generate_libcell_info_v2_multi_output.py`](../scripts/generate_libcell_info_v2_multi_output.py) | Python | Liberty → `libcell_info_v2_multi_output`（含 FA/HA） | 使用者（離線產 libcell） |
 | [`test_command.sh`](../scripts/test_command.sh) | 參考 | 早期 ABC 實驗腳本與驗證備註（非 runner） | 開發者參考 |
 
@@ -331,9 +334,64 @@ resyn2（展開版 `balance; rewrite; refactor; ...`）→ `read_lib` → `&nf` 
 
 ---
 
+## `run_fair_nf_emap_compare.sh`
+
+**功能**：**公平**比對 `&nf -Y` vs `emap -Y`——每個 case **只合成一次**（或重用既有 `synth.aig`），再分別做 map-only，最後呼叫 `compare_nf_emap_map.sh` 做 Liberty `stime`。
+
+```text
+EPFL .aig
+   │
+   ▼
+abc_syn_balance.abc  ──►  synth/<case>/synth.aig   （或 --reuse-synth-from）
+   │
+   ├──────────────────────┬──────────────────────┐
+   ▼                      ▼                      │
+abc_map_nf_y.abc     abc_map_emap_y.abc          │
+&nf -Y               emap -Y                     │
+   │                      │                      │
+   ▼                      ▼                      │
+nf/<case>/            emap/<case>/               │
+*_nf.v + match        *_emap.v + matches         │
+   │                      │                      │
+   └──────────┬───────────┘                      │
+              ▼                                  │
+   compare_nf_emap_map.sh  → compare_nf_emap.md  │
+```
+
+**範例**：
+
+```bash
+# 重用先前 emap 跑出的 synth.aig（跳過 deepsyn；推薦）
+./scripts/run_fair_nf_emap_compare.sh --scale all --parallel \
+  --reuse-synth-from output/abc_emap_map_20260710_162632
+
+# 從頭 deepsyn（慢；AND 仍保證兩邊相同）
+./scripts/run_fair_nf_emap_compare.sh --cases "adder ctrl" --jobs 2
+
+# smoke
+./scripts/run_fair_nf_emap_compare.sh --cases "adder ctrl" --jobs 2 \
+  --reuse-synth-from output/abc_emap_map_20260710_162632 \
+  --out output/fair_nf_emap_smoke --cec
+```
+
+**輸出**：
+
+```text
+output/fair_nf_emap_<ts>/
+  synth/<case>/synth.aig
+  nf/<case>/{synth.aig, synth_and.txt, <case>_nf.v, <case>.txt, run.log}
+  emap/<case>/{synth.aig, synth_and.txt, <case>_emap.v, matches.nf_y_multi.txt, run.log}
+  report.md
+  compare_nf_emap.md
+```
+
+兩邊 `synth_and.txt` 相同 ⇒ 報告中 `ΔAND%` 必為 `+0.0%`。
+
+---
+
 ## `compare_nf_emap_map.sh`
 
-**功能**：比對 `run_abc_syn_map.sh --flow balance`（`&nf -Y`）與 `run_abc_emap_map.sh`（`emap -Y`），並用**同一份 ASAP7 Liberty `stime`** 重跑 STA，輸出可直接比較的 markdown。
+**功能**：比對兩個 mapping 輸出目錄（`&nf -Y` vs `emap -Y`），並用**同一份 ASAP7 Liberty `stime`** 重跑 STA。建議輸入來自 `run_fair_nf_emap_compare.sh`（共用 `synth.aig`）；亦可比對舊的獨立 balance / emap 跑次（AND 可能因 `&deepsyn -T` 而不同）。
 
 **STA 流程**（兩邊相同）：
 

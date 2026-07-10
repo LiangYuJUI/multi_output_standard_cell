@@ -1,0 +1,24 @@
+# See docs/SCRIPTS.md
+# Map-only: read a fixed post-synth AIG, then emap -Y (+ Verilog).
+#
+# Used by run_fair_nf_emap_compare.sh so &nf and emap share the same subject graph.
+#
+# Placeholders:
+#   __INPUT_AIG__      path to shared synth.aig
+#   __GENLIB__         path to multioutput.genlib
+#   __MATCH_FILE__     path to nf_y_multi match dump
+#   __OUTPUT_V__       path to mapped Verilog
+#   __EMAP_FLAGS__     e.g. -a -v
+#   __DUMP_LEVEL__     1 / 2 / 3
+
+read __INPUT_AIG__
+strash
+ps
+
+read_genlib __GENLIB__
+emap __EMAP_FLAGS__ -Y __MATCH_FILE__ -M __DUMP_LEVEL__
+ps
+
+write_verilog __OUTPUT_V__
+read -m __OUTPUT_V__
+ps
