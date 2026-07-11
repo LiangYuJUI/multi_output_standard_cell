@@ -1,6 +1,6 @@
 # generate_libcell_info_v2_multi_output 使用說明
 
-本文件說明工作區腳本 `scripts/generate_libcell_info_v2_multi_output.py`。  
+本文件說明工作區腳本 `scripts/py/generate_libcell_info_v2_multi_output.py`。  
 它仿造 GRADUATE 的 `third_party/GRADUATE/scripts/generate_libcell_info_v2.py`，但**保留 multi-output standard cell**（例如 ASAP7 的 `FAx1_ASAP7_75t_R`、`HAxp5_ASAP7_75t_R`）。
 
 ---
@@ -60,7 +60,7 @@ Single-output cell 使用相同結構，只是 `outputs_num: 1`。
 ```bash
 cd /path/to/multi_output_standard_cell
 
-python3 scripts/generate_libcell_info_v2_multi_output.py \
+python3 scripts/py/generate_libcell_info_v2_multi_output.py \
   third_party/GRADUATE/third_party/gradmap_libs/asap7.lib \
   -o output/asap7_libcell_info_v2_multi_output.txt
 ```
@@ -77,7 +77,7 @@ python3 scripts/generate_libcell_info_v2_multi_output.py \
 合併後再執行：
 
 ```bash
-python3 scripts/generate_libcell_info_v2_multi_output.py \
+python3 scripts/py/generate_libcell_info_v2_multi_output.py \
   path/to/asap7.lib \
   -o output/asap7_libcell_info_v2_multi_output.txt
 ```
@@ -85,7 +85,7 @@ python3 scripts/generate_libcell_info_v2_multi_output.py \
 或直接指定 SIMPLE 庫（僅含 FA/HA 與基本邏輯閘）：
 
 ```bash
-python3 scripts/generate_libcell_info_v2_multi_output.py \
+python3 scripts/py/generate_libcell_info_v2_multi_output.py \
   third_party/asap7_RVT_FF_nldm/asap7sc7p5t_SIMPLE_RVT_FF_nldm_211120.lib \
   -o output/simple_libcell_info_v2_multi_output.txt
 ```
@@ -93,7 +93,7 @@ python3 scripts/generate_libcell_info_v2_multi_output.py \
 ### 3. 多個 Liberty 檔一次輸入
 
 ```bash
-python3 scripts/generate_libcell_info_v2_multi_output.py \
+python3 scripts/py/generate_libcell_info_v2_multi_output.py \
   third_party/GRADUATE/third_party/gradmap_libs/asap7.lib \
   third_party/asap7_RVT_FF_nldm/asap7sc7p5t_SEQ_RVT_FF_nldm_220123.lib \
   -o output/asap7_with_seq_libcell_info_v2_multi_output.txt
@@ -104,7 +104,7 @@ python3 scripts/generate_libcell_info_v2_multi_output.py \
 ### 4. 保留 tie cell
 
 ```bash
-python3 scripts/generate_libcell_info_v2_multi_output.py \
+python3 scripts/py/generate_libcell_info_v2_multi_output.py \
   third_party/GRADUATE/third_party/gradmap_libs/asap7.lib \
   --include-tie-cells \
   -o output/asap7_with_tie_libcell_info_v2_multi_output.txt

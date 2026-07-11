@@ -5,6 +5,7 @@
 > **相關文件**  
 > - [GRADUATE.md](GRADUATE.md) — 建置、`graduate-abc`、GradSyn/GradMap 命令總覽  
 > - [ABC_MOCKTURTLE_MULTI_OUTPUT.md](ABC_MOCKTURTLE_MULTI_OUTPUT.md) — ABC emap match dump、`nf_y_multi` 擴充規劃  
+> - [NF_EMAP_CANDIDATE_ORDER.md](NF_EMAP_CANDIDATE_ORDER.md) — `&nf -Y`／`emap -Y` 候選枚舉與 dump 順序  
 > - [GENERATE_LIBCELL_INFO_V2_MULTI_OUTPUT.md](GENERATE_LIBCELL_INFO_V2_MULTI_OUTPUT.md) — multi-output libcell 格式  
 > - GRADUATE 上游：`third_party/GRADUATE/docs/gradmap_refactor.md`
 
@@ -152,7 +153,8 @@ graduate-abc (ABC shell)
 
 ## ABC `&nf -Y` match file
 
-GradMap 預設消費 ABC **`&nf -Y <file>`** 產生的文字檔（工作目錄中為 `matches.nf_y.txt`）。格式定義見 `third_party/GRADUATE/docs/gradmap_refactor.md` 與 `giaNf.c` 的 `Nf_ManDumpMatchesCovers()`。
+GradMap 預設消費 ABC **`&nf -Y <file>`** 產生的文字檔（工作目錄中為 `matches.nf_y.txt`）。格式定義見 `third_party/GRADUATE/docs/gradmap_refactor.md` 與 `giaNf.c` 的 `Nf_ManDumpMatchesCovers()`。  
+候選**如何枚舉／寫出順序**（以及與 `emap -Y` 的差異）見 [NF_EMAP_CANDIDATE_ORDER.md](NF_EMAP_CANDIDATE_ORDER.md)。
 
 ### 記錄類型
 
@@ -671,7 +673,7 @@ gradmap -match matches.nf_y_multi.txt -match-format nf_y_multi \
 產生 **與 GradMap 相同格式** 的 match file + Verilog，但 **不執行 GradMap 訓練**：
 
 ```text
-scripts/abc_syn_map_balance.abc
+scripts/abc/abc_syn_map_balance.abc
   → &nf -Y <case>.txt
   → write_verilog <case>_balance.v
 ```
@@ -681,21 +683,16 @@ scripts/abc_syn_map_balance.abc
 - 取得 `&nf -Y` match dump 供分析或餵給未來 GradMap
 - 與 ABC mapper 的 baseline QoR 比較
 
-### `run_abc_mockturtle_map.sh`（Phase 0）
+### `run_abc_emap_map.sh` / fair compare
 
-走 mockturtle emap，**不經 GradMap**；用於驗證 multi-output mapping QoR。
-
-### 規劃：`run_abc_emap_map.sh`
-
-ABC `emap -Y` → `nf_y_multi.txt` → GradMap（見整合規劃文件）。
+ABC `emap -Y` → `nf_y_multi.txt` →（未來）GradMap binding 訓練。見 [`ABC_MOCKTURTLE_MULTI_OUTPUT.md`](ABC_MOCKTURTLE_MULTI_OUTPUT.md)。
 
 ### 資料流對照
 
 ```text
                     GradMap 可消費？
 run_abc_syn_map balance     matches.nf_y 格式    ✅（SO only，現有 parser）
-run_abc_mockturtle_map      無 match file       ❌（僅 Verilog）
-ABC emap -Y（規劃）         nf_y_multi          ⏳（需 parser 擴充）
+ABC emap -Y（正式）         nf_y_multi          ⏳（需 parser 擴充）
 ```
 
 ---
@@ -721,7 +718,7 @@ ABC emap -Y（規劃）         nf_y_multi          ⏳（需 parser 擴充）
 
 ### 本專案擴充方向
 
-1. **`libcell_info_v2_multi_output`** — `scripts/generate_libcell_info_v2_multi_output.py`（已存在）
+1. **`libcell_info_v2_multi_output`** — `scripts/py/generate_libcell_info_v2_multi_output.py`（已存在）
 2. **`nf_y_multi` match format** — `BIND` / `MBIND`（見 [ABC_MOCKTURTLE_MULTI_OUTPUT.md](ABC_MOCKTURTLE_MULTI_OUTPUT.md)）
 3. **ABC `emap -Y`** — 利用 `TwinObj` 產生雙 root binding 候選
 4. **GradMap `MapBinding`** — binding-level softmax + 聯合 area 計費
@@ -793,7 +790,7 @@ ABC `M` 記錄的 cell/fanin 組合在候選列表中找不到完全匹配；par
 使用本專案腳本：
 
 ```bash
-./scripts/run_abc_syn_map.sh --flow balance --cases ctrl
+./Nonescripts/sh/run_abc_syn_map.sh --flow balance --cases ctrl
 # 產物：output/.../ctrl/ctrl.txt
 ```
 

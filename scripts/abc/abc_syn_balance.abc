@@ -4,7 +4,7 @@
 # Equivalent to the synthesis portion of abc_syn_map_balance.abc:
 #   &if -y -K 6; resyn2; &deepsyn; strash; write_aiger
 #
-# Placeholders expanded by run_abc_mockturtle_map.sh:
+# Placeholders expanded by run_fair_nf_emap_compare.sh (and similar runners):
 #   __INPUT_AIG__      path to input .aig
 #   __OUTPUT_AIG__     path to synthesized output .aig
 #   __LIBERTY__        path to asap7.lib (needed before &get/&deepsyn in gia space)

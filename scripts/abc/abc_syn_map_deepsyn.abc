@@ -1,7 +1,7 @@
 # See docs/SCRIPTS.md
 # Pure ABC flow: &deepsyn synthesis -> &nf technology mapping -> Verilog output
 #
-# Closely follows scripts/test_command.sh intent, with corrections:
+# Notes:
 #   - use &nf (not &nf -Y) for gate-level mapping
 #   - optional rec_start3 disabled by default (needs GRADUATE_REC_LIB)
 #   - optional &if preprocessing disabled by default

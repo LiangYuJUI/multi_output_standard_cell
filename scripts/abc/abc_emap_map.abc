@@ -20,7 +20,7 @@
 #   __OUTPUT_AIG__     path to post-synth AIG (for fair compare vs &nf -Y run)
 #   __REC_START3__     optional rec_start3 line (empty if disabled)
 #   __DEEPSYN_ARGS__   default: -T 120
-#   __EMAP_FLAGS__     e.g. -a -v
+#   __EMAP_FLAGS__     e.g. -a -v -D 2 -K 16 (formal SO export policy)
 #   __DUMP_LEVEL__     1 / 2 / 3
 
 read __INPUT_AIG__

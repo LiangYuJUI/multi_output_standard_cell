@@ -9,14 +9,14 @@
 #   4) Liberty stime compare via compare_nf_emap_map.sh
 #
 # Examples:
-#   ./scripts/run_fair_nf_emap_compare.sh --cases "adder ctrl" --jobs 4
-#   ./scripts/run_fair_nf_emap_compare.sh --scale all --parallel \
+#   ./scripts/sh/run_fair_nf_emap_compare.sh --cases "adder ctrl" --jobs 4
+#   ./scripts/sh/run_fair_nf_emap_compare.sh --scale all --parallel \
 #     --reuse-synth-from output/abc_emap_map_20260710_162632
-#   ./scripts/run_fair_nf_emap_compare.sh --scale tiny --jobs 4  # fresh deepsyn
+#   ./scripts/sh/run_fair_nf_emap_compare.sh --scale tiny --jobs 4  # fresh deepsyn
 #
 set -euo pipefail
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 GRADUATE_DIR="${GRADUATE_DIR:-$ROOT_DIR/third_party/GRADUATE}"
 ABC="${GRADUATE_ABC:-$GRADUATE_DIR/build_abc_frontend/graduate-abc}"
 LIBERTY="${GRADUATE_LIBERTY:-$GRADUATE_DIR/third_party/gradmap_libs/asap7.lib}"
@@ -36,10 +36,15 @@ JOBS="${JOBS:-1}"
 GENLIB="${EMAP_GENLIB:-$ROOT_DIR/third_party/mockturtle/experiments/cell_libraries/multioutput.genlib}"
 DUMP_LEVEL="${DUMP_LEVEL:-1}"
 EMAP_FLAGS="${EMAP_FLAGS:--a -v}"
+SO_DEDUP="${SO_DEDUP:-nf-like}"
+SO_CUT_TOPK="${SO_CUT_TOPK:-16}"
 REUSE_SYNTH_FROM=""
 SKIP_COMPARE=0
 FORCE_STIME=0
 RUN_CEC=0
+
+# shellcheck source=emap_so_policy_lib.sh
+source "$ROOT_DIR/scripts/sh/emap_so_policy_lib.sh"
 
 usage() {
   cat <<EOF
@@ -63,6 +68,7 @@ Options:
   --genlib PATH
   --dump-level 1|2|3              emap -M [1]
   --emap-flags STR                [default: -a -v]
+$(emap_so_policy_usage_lines)
   --cec                           CEC each mapped Verilog vs shared synth.aig
   --skip-compare                  skip Liberty stime markdown report
   --force-stime                   re-run stime even if cached
@@ -75,9 +81,12 @@ Layout:
   <out>/compare_nf_emap.md
 
 Examples:
-  ./scripts/run_fair_nf_emap_compare.sh --cases "adder ctrl" --jobs 4
-  ./scripts/run_fair_nf_emap_compare.sh --scale all --parallel \\
+  ./scripts/sh/run_fair_nf_emap_compare.sh --cases "adder ctrl" --jobs 4
+  ./scripts/sh/run_fair_nf_emap_compare.sh --scale all --parallel \\
     --reuse-synth-from output/abc_emap_map_20260710_162632
+  # Formal GradMap M3 policy:
+  ./scripts/sh/run_fair_nf_emap_compare.sh --cases adder --dump-level 3 \\
+    --reuse-synth-from output/fair_nf_emap_asap7genlib --skip-compare --cec
 EOF
 }
 
@@ -97,6 +106,8 @@ while [[ $# -gt 0 ]]; do
     --genlib) GENLIB="$2"; shift 2 ;;
     --dump-level) DUMP_LEVEL="$2"; shift 2 ;;
     --emap-flags) EMAP_FLAGS="$2"; shift 2 ;;
+    --so-dedup) SO_DEDUP="$2"; shift 2 ;;
+    --so-cut-topk) SO_CUT_TOPK="$2"; shift 2 ;;
     --cec) RUN_CEC=1; shift ;;
     --skip-compare) SKIP_COMPARE=1; shift ;;
     --force-stime) FORCE_STIME=1; shift ;;
@@ -109,7 +120,7 @@ if [[ "$CASES_EXPLICIT" != "1" ]]; then
   if [[ -z "$SCALE" ]]; then
     SCALE="all"
   fi
-  CASES="$("$ROOT_DIR/scripts/list_epfl_benchmarks.sh" "$SCALE" | tr '\n' ' ')"
+  CASES="$("$ROOT_DIR/scripts/sh/list_epfl_benchmarks.sh" "$SCALE" | tr '\n' ' ')"
 fi
 
 SYNTH_TIMEOUT="${SYNTH_TIMEOUT:-$TIMEOUT}"
@@ -119,6 +130,8 @@ if [[ ! "$DUMP_LEVEL" =~ ^[123]$ ]]; then
   echo "invalid --dump-level: $DUMP_LEVEL" >&2
   exit 1
 fi
+
+EMAP_FLAGS="$(emap_so_append_flags "$EMAP_FLAGS" "$SO_DEDUP" "$SO_CUT_TOPK")" || exit 1
 if [[ ! -x "$ABC" ]]; then
   echo "missing graduate-abc: $ABC" >&2
   exit 1
@@ -140,9 +153,9 @@ if [[ -n "$REUSE_SYNTH_FROM" && ! -d "$REUSE_SYNTH_FROM" ]]; then
   exit 1
 fi
 
-SYNTH_TEMPLATE="$ROOT_DIR/scripts/abc_syn_balance.abc"
-NF_TEMPLATE="$ROOT_DIR/scripts/abc_map_nf_y.abc"
-EMAP_TEMPLATE="$ROOT_DIR/scripts/abc_map_emap_y.abc"
+SYNTH_TEMPLATE="$ROOT_DIR/scripts/abc/abc_syn_balance.abc"
+NF_TEMPLATE="$ROOT_DIR/scripts/abc/abc_map_nf_y.abc"
+EMAP_TEMPLATE="$ROOT_DIR/scripts/abc/abc_map_emap_y.abc"
 for t in "$SYNTH_TEMPLATE" "$NF_TEMPLATE" "$EMAP_TEMPLATE"; do
   [[ -f "$t" ]] || { echo "missing $t" >&2; exit 1; }
 done
@@ -416,6 +429,8 @@ cat > "$REPORT" <<EOF
 - deepsyn: \`$DEEPSYN_ARGS\`
 - emap_flags: \`$EMAP_FLAGS\`
 - dump_level: \`$DUMP_LEVEL\`
+- so_dedup: \`$SO_DEDUP\`
+- so_cut_topk: \`$SO_CUT_TOPK\`
 - abc: \`$ABC\`
 - liberty: \`$LIBERTY\`
 - genlib: \`$GENLIB\`
@@ -469,7 +484,7 @@ if [[ "$SKIP_COMPARE" != "1" ]]; then
     cmp_args+=(--force-stime)
   fi
   echo "Running Liberty STA compare ..."
-  "$ROOT_DIR/scripts/compare_nf_emap_map.sh" "${cmp_args[@]}"
+  "$ROOT_DIR/scripts/sh/compare_nf_emap_map.sh" "${cmp_args[@]}"
 fi
 
 echo

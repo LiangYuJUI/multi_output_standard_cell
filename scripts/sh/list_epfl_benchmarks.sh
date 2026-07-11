@@ -3,14 +3,14 @@
 # List EPFL benchmark names or resolve paths from data/epfl/*.yaml
 #
 # Usage:
-#   ./scripts/list_epfl_benchmarks.sh small
-#   ./scripts/list_epfl_benchmarks.sh medium large
-#   ./scripts/list_epfl_benchmarks.sh --path small adder
-#   ./scripts/list_epfl_benchmarks.sh --yaml medium
+#   ./scripts/sh/list_epfl_benchmarks.sh small
+#   ./scripts/sh/list_epfl_benchmarks.sh medium large
+#   ./scripts/sh/list_epfl_benchmarks.sh --path small adder
+#   ./scripts/sh/list_epfl_benchmarks.sh --yaml medium
 #
 set -euo pipefail
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 DATA_DIR="$ROOT_DIR/data/epfl"
 
 usage() {

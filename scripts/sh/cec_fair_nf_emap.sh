@@ -5,18 +5,18 @@
 # Checks (per case):
 #   nf/<case>/*_nf.v          vs synth/<case>/synth.aig
 #   emap/<case>/*_emap.v      vs synth/<case>/synth.aig
-#     (emap FA/HA twins merged via scripts/merge_emap_twins.py first)
+#     (emap FA/HA twins merged via scripts/py/merge_emap_twins.py first)
 #
 # Does NOT remap; only verifies gate-level netlists already on disk.
 #
 # Examples:
-#   ./scripts/cec_fair_nf_emap.sh
-#   ./scripts/cec_fair_nf_emap.sh --root output/fair_nf_emap_asap7genlib --jobs 8
-#   ./scripts/cec_fair_nf_emap.sh --emap-subdir emap_l1 --cases "adder square"
+#   ./scripts/sh/cec_fair_nf_emap.sh
+#   ./scripts/sh/cec_fair_nf_emap.sh --root output/fair_nf_emap_asap7genlib --jobs 8
+#   ./scripts/sh/cec_fair_nf_emap.sh --emap-subdir emap_l1 --cases "adder square"
 #
 set -euo pipefail
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 GRADUATE_DIR="${GRADUATE_DIR:-$ROOT_DIR/third_party/GRADUATE}"
 ABC="${GRADUATE_ABC:-$GRADUATE_DIR/build_abc_frontend/graduate-abc}"
 LIBERTY="${GRADUATE_LIBERTY:-$GRADUATE_DIR/third_party/gradmap_libs/asap7.lib}"
@@ -26,7 +26,7 @@ EMAP_SUBDIR="${EMAP_SUBDIR:-emap}"
 CASES="${CASES:-}"
 JOBS="${JOBS:-1}"
 TIMEOUT="${TIMEOUT:-600}"
-MERGE_PY="$ROOT_DIR/scripts/merge_emap_twins.py"
+MERGE_PY="$ROOT_DIR/scripts/py/merge_emap_twins.py"
 
 usage() {
   cat <<EOF
@@ -202,7 +202,7 @@ else
 fi
 
 {
-  echo "# CEC: mapped Verilog vs shared synth.aig"
+  echo "# Combinational Equivalence Checking (CEC): mapped Verilog vs shared synth.aig"
   echo
   echo "- date: $(date -Iseconds)"
   echo "- root: \`$FAIR_ROOT\`"

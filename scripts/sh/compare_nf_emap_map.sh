@@ -7,18 +7,18 @@
 # single multi-output instances so ABC can read -m + stime under Liberty.
 #
 # Examples:
-#   ./scripts/compare_nf_emap_map.sh \
+#   ./scripts/sh/compare_nf_emap_map.sh \
 #     --nf-dir output/abc_syn_map_20260709_201016 \
 #     --emap-dir output/abc_emap_map_20260710_162632
 #
-#   ./scripts/compare_nf_emap_map.sh \
+#   ./scripts/sh/compare_nf_emap_map.sh \
 #     --nf-dir output/abc_syn_map_20260709_201016 \
 #     --emap-dir output/abc_emap_map_20260710_162632 \
 #     --force-stime --jobs 8
 #
 set -euo pipefail
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 GRADUATE_DIR="${GRADUATE_DIR:-$ROOT_DIR/third_party/GRADUATE}"
 ABC="${GRADUATE_ABC:-$GRADUATE_DIR/build_abc_frontend/graduate-abc}"
 LIBERTY="${GRADUATE_LIBERTY:-$GRADUATE_DIR/third_party/gradmap_libs/asap7.lib}"
@@ -481,7 +481,7 @@ done
   echo "## How to reproduce"
   echo
   echo '```bash'
-  echo "./scripts/compare_nf_emap_map.sh \\"
+  echo "./scripts/sh/compare_nf_emap_map.sh \\"
   echo "  --nf-dir $NF_DIR \\"
   echo "  --emap-dir $EMAP_DIR \\"
   echo "  --liberty $LIBERTY \\"

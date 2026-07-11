@@ -1,6 +1,13 @@
 # Python virtual environment
 .venv/
 
+# Python bytecode caches (e.g. scripts/__pycache__)
+__pycache__/
+*.py[cod]
+
+# ABC interactive command history (created when running graduate-abc / abc)
+abc.history
+
 # Generated run artifacts (ABC flows, match dumps, reports)
 output/
 

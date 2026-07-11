@@ -595,9 +595,8 @@ GRADUATE 原始碼目錄內有更詳細的設計文件：
 | `third_party/GRADUATE/docs/setup.md` | 伺服器安裝、建置、自訂函式庫 |
 | `third_party/GRADUATE/docs/architecture.md` | 架構設計與模組劃分 |
 | `third_party/GRADUATE/docs/sequential_benchmarks.md` | 時序 benchmark 流程細節 |
-| 文件 | 說明 |
-|------|------|
-| [`docs/GRADMAP.md`](../GRADMAP.md) | **GradMap 完整說明**（match file、訓練、限制） |
+| [`GRADMAP.md`](GRADMAP.md) | **GradMap 完整說明**（match file、訓練、限制） |
+| [`NF_EMAP_CANDIDATE_ORDER.md`](NF_EMAP_CANDIDATE_ORDER.md) | `&nf -Y`／`emap -Y` 候選枚舉與 dump 順序 |
 | `third_party/GRADUATE/docs/gradmap_refactor.md` | GradMap 重構與 `&nf -Y` 語意（上游） |
 
 ---

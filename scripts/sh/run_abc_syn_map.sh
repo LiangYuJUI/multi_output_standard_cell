@@ -8,13 +8,13 @@
 #   balance  legacy balance flow: &if + resyn2 + deepsyn + &nf -Y match dump + Verilog
 #
 # Examples:
-#   ./scripts/run_abc_syn_map.sh --flow balance --scale all --parallel
-#   ./scripts/run_abc_syn_map.sh --flow balance --scale tiny --jobs 4
-#   ./scripts/run_abc_syn_map.sh --flow resyn2 --cases "adder bar"
+#   ./scripts/sh/run_abc_syn_map.sh --flow balance --scale all --parallel
+#   ./scripts/sh/run_abc_syn_map.sh --flow balance --scale tiny --jobs 4
+#   ./scripts/sh/run_abc_syn_map.sh --flow resyn2 --cases "adder bar"
 #
 set -euo pipefail
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 GRADUATE_DIR="${GRADUATE_DIR:-$ROOT_DIR/third_party/GRADUATE}"
 ABC="${GRADUATE_ABC:-$GRADUATE_DIR/build_abc_frontend/graduate-abc}"
 LIBERTY="${GRADUATE_LIBERTY:-$GRADUATE_DIR/third_party/gradmap_libs/asap7.lib}"
@@ -59,8 +59,8 @@ Environment:
   GRADUATE_ABC, GRADUATE_LIBERTY, GRADUATE_REC_LIB, DEEPSYN_ARGS, BENCH_ROOT, JOBS
 
 Examples:
-  ./scripts/run_abc_syn_map.sh --flow balance --scale all --parallel
-  ./scripts/run_abc_syn_map.sh --flow balance --scale tiny --jobs 4
+  ./scripts/sh/run_abc_syn_map.sh --flow balance --scale all --parallel
+  ./scripts/sh/run_abc_syn_map.sh --flow balance --scale tiny --jobs 4
 EOF
 }
 
@@ -82,7 +82,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [[ -n "$SCALE" && "$CASES_EXPLICIT" != "1" ]]; then
-  CASES="$("$ROOT_DIR/scripts/list_epfl_benchmarks.sh" "$SCALE" | tr '\n' ' ')"
+  CASES="$("$ROOT_DIR/scripts/sh/list_epfl_benchmarks.sh" "$SCALE" | tr '\n' ' ')"
 fi
 
 if [[ ! -x "$ABC" ]]; then
@@ -100,9 +100,9 @@ if ! [[ "$JOBS" =~ ^[1-9][0-9]*$ ]]; then
 fi
 
 case "$FLOW" in
-  resyn2) ABC_TEMPLATE="$ROOT_DIR/scripts/abc_syn_map_resyn2.abc" ;;
-  deepsyn) ABC_TEMPLATE="$ROOT_DIR/scripts/abc_syn_map_deepsyn.abc" ;;
-  balance) ABC_TEMPLATE="$ROOT_DIR/scripts/abc_syn_map_balance.abc" ;;
+  resyn2) ABC_TEMPLATE="$ROOT_DIR/scripts/abc/abc_syn_map_resyn2.abc" ;;
+  deepsyn) ABC_TEMPLATE="$ROOT_DIR/scripts/abc/abc_syn_map_deepsyn.abc" ;;
+  balance) ABC_TEMPLATE="$ROOT_DIR/scripts/abc/abc_syn_map_balance.abc" ;;
   *)
     echo "unsupported flow: $FLOW (use resyn2, deepsyn, or balance)" >&2
     exit 1

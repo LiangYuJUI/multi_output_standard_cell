@@ -6,13 +6,13 @@
 # Only the mapping step differs: &nf -Y  vs  emap -Y.
 #
 # Examples:
-#   ./scripts/run_abc_emap_map.sh --scale all --parallel
-#   ./scripts/run_abc_emap_map.sh --cases "adder ctrl" --dump-level 1 --cec
-#   ./scripts/run_abc_emap_map.sh --scale all --jobs 4 --dump-level 1
+#   ./scripts/sh/run_abc_emap_map.sh --scale all --parallel
+#   ./scripts/sh/run_abc_emap_map.sh --cases "adder ctrl" --dump-level 1 --cec
+#   ./scripts/sh/run_abc_emap_map.sh --scale all --jobs 4 --dump-level 1
 #
 set -euo pipefail
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 GRADUATE_DIR="${GRADUATE_DIR:-$ROOT_DIR/third_party/GRADUATE}"
 ABC="${GRADUATE_ABC:-$GRADUATE_DIR/build_abc_frontend/graduate-abc}"
 LIBERTY="${GRADUATE_LIBERTY:-$GRADUATE_DIR/third_party/gradmap_libs/asap7.lib}"
@@ -31,7 +31,13 @@ JOBS="${JOBS:-1}"
 GENLIB="${EMAP_GENLIB:-$ROOT_DIR/third_party/mockturtle/experiments/cell_libraries/multioutput.genlib}"
 DUMP_LEVEL="${DUMP_LEVEL:-1}"
 EMAP_FLAGS="${EMAP_FLAGS:--a -v}"
+# Formal GradMap SO export policy (overridable; use none/0 for legacy).
+SO_DEDUP="${SO_DEDUP:-nf-like}"
+SO_CUT_TOPK="${SO_CUT_TOPK:-16}"
 RUN_CEC=0
+
+# shellcheck source=emap_so_policy_lib.sh
+source "$ROOT_DIR/scripts/sh/emap_so_policy_lib.sh"
 
 usage() {
   cat <<EOF
@@ -55,16 +61,22 @@ Options:
   --genlib PATH                   multioutput GENLIB for emap
   --dump-level 1|2|3              emap -M level [1]
   --emap-flags STR                flags before -Y/-M [default: -a -v]
+$(emap_so_policy_usage_lines)
   --cec                           CEC mapped Verilog vs synth.aig
   -h, --help
 
 Environment:
   GRADUATE_ABC, GRADUATE_LIBERTY, GRADUATE_REC_LIB, DEEPSYN_ARGS,
-  EMAP_GENLIB, EMAP_FLAGS, BENCH_ROOT, JOBS
+  EMAP_GENLIB, EMAP_FLAGS, SO_DEDUP, SO_CUT_TOPK, BENCH_ROOT, JOBS
 
 Examples:
-  ./scripts/run_abc_emap_map.sh --scale all --parallel
-  ./scripts/run_abc_emap_map.sh --cases "adder ctrl bar" --dump-level 1 --cec
+  ./scripts/sh/run_abc_emap_map.sh --scale all --parallel
+  ./scripts/sh/run_abc_emap_map.sh --cases "adder ctrl bar" --dump-level 1 --cec
+  # Formal GradMap M3 dump (default SO policy: nf-like + top-16):
+  ./scripts/sh/run_abc_emap_map.sh --cases adder --dump-level 3 --cec
+  # Legacy unlimited SO dump:
+  ./scripts/sh/run_abc_emap_map.sh --cases adder --dump-level 3 \\
+    --so-dedup none --so-cut-topk 0
 EOF
 }
 
@@ -81,6 +93,8 @@ while [[ $# -gt 0 ]]; do
     --genlib) GENLIB="$2"; shift 2 ;;
     --dump-level) DUMP_LEVEL="$2"; shift 2 ;;
     --emap-flags) EMAP_FLAGS="$2"; shift 2 ;;
+    --so-dedup) SO_DEDUP="$2"; shift 2 ;;
+    --so-cut-topk) SO_CUT_TOPK="$2"; shift 2 ;;
     --cec) RUN_CEC=1; shift ;;
     -h|--help) usage; exit 0 ;;
     *) echo "unknown option: $1" >&2; usage >&2; exit 1 ;;
@@ -91,13 +105,15 @@ if [[ "$CASES_EXPLICIT" != "1" ]]; then
   if [[ -z "$SCALE" ]]; then
     SCALE="all"
   fi
-  CASES="$("$ROOT_DIR/scripts/list_epfl_benchmarks.sh" "$SCALE" | tr '\n' ' ')"
+  CASES="$("$ROOT_DIR/scripts/sh/list_epfl_benchmarks.sh" "$SCALE" | tr '\n' ' ')"
 fi
 
 if [[ ! "$DUMP_LEVEL" =~ ^[123]$ ]]; then
   echo "invalid --dump-level: $DUMP_LEVEL (want 1, 2, or 3)" >&2
   exit 1
 fi
+
+EMAP_FLAGS="$(emap_so_append_flags "$EMAP_FLAGS" "$SO_DEDUP" "$SO_CUT_TOPK")" || exit 1
 
 if [[ ! -x "$ABC" ]]; then
   echo "missing graduate-abc: $ABC" >&2
@@ -117,7 +133,7 @@ if ! [[ "$JOBS" =~ ^[1-9][0-9]*$ ]]; then
   exit 1
 fi
 
-ABC_TEMPLATE="$ROOT_DIR/scripts/abc_emap_map.abc"
+ABC_TEMPLATE="$ROOT_DIR/scripts/abc/abc_emap_map.abc"
 [[ -f "$ABC_TEMPLATE" ]] || { echo "missing $ABC_TEMPLATE" >&2; exit 1; }
 
 REC_START3_LINE=""
@@ -271,6 +287,7 @@ cat > "$REPORT" <<EOF
 - compare_baseline: \`run_abc_syn_map.sh --flow balance\` (\`abc_syn_map_balance.abc\`)
 - synth_identical: yes (\`&if -y -K 6\` + resyn2 + \`&deepsyn $DEEPSYN_ARGS\`)
 - mapping: \`emap $EMAP_FLAGS -Y ... -M $DUMP_LEVEL\`
+- so_dedup: \`$SO_DEDUP\`  so_cut_topk: \`$SO_CUT_TOPK\`
 - scale: \`${SCALE:-<none>}\`
 - suite: \`${SUITE:-<auto>}\`
 - cases: \`$CASES\`
@@ -291,6 +308,8 @@ echo "  scale:       ${SCALE:-<none>}"
 echo "  cases:       $CASES"
 echo "  jobs:        $JOBS"
 echo "  dump_level:  $DUMP_LEVEL"
+echo "  so_dedup:    $SO_DEDUP"
+echo "  so_cut_topk: $SO_CUT_TOPK"
 echo "  emap_flags:  $EMAP_FLAGS"
 echo "  deepsyn:     $DEEPSYN_ARGS"
 echo "  out:         $OUT_ROOT"

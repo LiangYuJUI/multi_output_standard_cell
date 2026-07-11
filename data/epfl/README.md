@@ -56,21 +56,21 @@ Classification uses **AND gate count** after `strash` (from `graduate-abc ps`).
 List case names from a scale file:
 
 ```bash
-./scripts/list_epfl_benchmarks.sh tiny
+./Nonescripts/sh/list_epfl_benchmarks.sh tiny
 # ctrl int2float dec router cavlc priority
 ```
 
 Run ABC syn→map on a scale set:
 
 ```bash
-CASES="$(./scripts/list_epfl_benchmarks.sh small)" \
-  ./scripts/run_abc_syn_map.sh --flow resyn2
+CASES="$(./Nonescripts/sh/list_epfl_benchmarks.sh small)" \
+  ./Nonescripts/sh/run_abc_syn_map.sh --flow resyn2
 ```
 
 Resolve absolute path for one benchmark:
 
 ```bash
-./scripts/list_epfl_benchmarks.sh --path small adder
+./Nonescripts/sh/list_epfl_benchmarks.sh --path small adder
 # /home/.../third_party/benchmarks/EPFL/arithmetic/adder.aig
 ```
 
